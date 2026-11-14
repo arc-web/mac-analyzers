@@ -1,7 +1,7 @@
 // snapshot-runner — render a real screen of the app to a PNG without ever
 // putting a window in front of anyone.
 //
-//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--welcome <fresh|upgraded|continuing>:<step>]
+//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--seen <version>] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--welcome <fresh|upgraded|continuing>:<step>]
 //   snapshot-runner overview /tmp/overview.png
 //
 // <target> is any deep-link target the app understands (`monitor`, `caches`,
@@ -41,6 +41,9 @@ import SettingsFeature
 let arguments = Array(CommandLine.arguments.dropFirst())
 // `--outline-probe <action> …` drives the shared OutlineTable headless (OutlineProbe.swift); it never renders a screen
 if arguments.first == "--outline-probe" { OutlineProbe.run(Array(arguments.dropFirst())) }
+// `--check-whats-new <changelog> <version|next>`: every screen and icon a What's New tag names exists in this app
+// (WhatsNewCheck.swift); exit 1 when one does not.
+if arguments.first == "--check-whats-new" { WhatsNewCheck.run(arguments) }
 // `--probe-links`: every link that used to open an old Storage screen or the five-cleaner picker lands on a
 // current screen (never on nothing, never on a view that no longer exists); exit 1 when one does not.
 if arguments.first == "--probe-links" {
@@ -119,6 +122,15 @@ func option(_ name: String) -> String? {
     guard let index = arguments.firstIndex(of: name), arguments.indices.contains(index + 1) else { return nil }
     return arguments[index + 1]
 }
+// `--seen <version>`: the release What's New treats as the last one seen (the card announces a newer one, rows of a
+// newer release say New); the target `sidebar:whatsNewCard` is the overview with the card showing: it starts from an
+// old release, on a release build, whatever else is asked.
+if target == "sidebar:whatsNewCard" {
+    target = "overview"
+    UserDefaults.standard.set(option("--seen") ?? "1.0.0", forKey: "whatsNew.seenVersion")
+} else if let seen = option("--seen") {
+    UserDefaults.standard.set(seen, forKey: "whatsNew.seenVersion")
+}
 // `--home <folder>`: every path the app reads (reports, logs, ledgers) resolves under this folder instead of the account's
 // home, so a screen can be looked at with a log of any size (a run of 6,000 items) without touching the real ones.
 // Must come before anything asks for a path.
@@ -162,7 +174,7 @@ let scrollToEnd = arguments.contains("--scroll-end")
 let scrollSidebar = arguments.contains("--scroll-sidebar")
 /// `--update-state uptodate|dev|available`: which state the sidebar's version item shows
 /// (the network is not asked), to render every state of it.
-let updateStateOption = option("--update-state")
+let updateStateOption = option("--update-state") ?? (arguments.first == "sidebar:whatsNewCard" ? "uptodate" : nil)
 /// `--appearance light|dark`: the app's appearance for this render. Anything else is refused.
 let appearanceOption = option("--appearance")
 if let appearanceOption, !["light", "dark"].contains(appearanceOption) {

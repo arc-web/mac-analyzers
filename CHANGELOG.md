@@ -3,7 +3,26 @@
 Every release of Mac Analyzers, newest first, written for the people who use
 it. This file is the single source for release notes: the app's Update screen
 shows it, and each GitHub release publishes its entry. A release cannot ship
-without an entry here — see `scripts/cut-release.sh`.
+without an entry here — see `scripts/cut-release.sh`. The app lists each
+bullet as a feature of its own, so every bullet ends with a short tag that
+GitHub does not show; `scripts/changelog-check.sh` says what it must hold.
+
+## Next
+
+Notes for the release being worked on collect here. When it ships, this
+heading becomes its version and title, and this note is deleted. Every bullet
+ends with one tag after its last word, written exactly like this one: `<!-- wn: open=guard icon=shield.lefthalf.filled title="Short Title" -->`.
+The screen is a deep-link name such as `monitor`, `trends` or `recordings`
+(`-` for a change across the whole app), the icon is an SF Symbol, and the
+title is optional. One screen per bullet: a change that touches two screens
+is two bullets. The release date is added when the release is cut.
+
+- What's New now lists each new feature on its own, grouped by the screen it
+  belongs to, with an icon and the date it arrived. Open one to read about it
+  and go straight to that screen. <!-- wn: open=update icon=sparkles title="What's New as Features" -->
+- When Mac Analyzers updates, a card at the bottom of the sidebar says what's
+  new until you've seen it, and goes away when you close it or open What's
+  New. <!-- wn: open=- icon=rectangle.badge.plus title="A Card for New Releases" -->
 
 ## Next
 
@@ -39,43 +58,44 @@ screens that show history all choose their period the same way.
   recordings and others — and shows each as its own tab, with recordings
   grouped by day. Choose which folders it looks in, add your own, and set
   how old a recording has to be, all from one Sources window, also opened
-  from Choose Folders… when nothing has been found yet.
+  from Choose Folders… when nothing has been found yet. <!-- wn: open=recordings icon=film.stack title="Recording Sources as Tabs" -->
 - It never touches recordings that live in the cloud or that another app
   keeps a library of, and it keeps a Zoom meeting that hasn't been
   converted yet. SuperWhisper is found but left off, because it keeps its
-  own history and has its own "Keep recordings for" setting.
+  own history and has its own "Keep recordings for" setting. <!-- wn: open=recordings icon=lock.shield title="Cloud Recordings Stay Safe" -->
 - A source must be a folder in your home folder or on an external disk.
   Your whole Movies, Documents or Desktop folder, a link, or anything
   inside your Library is refused as a folder of recordings, with the
   reason shown; screen recordings saved straight to the Desktop are still
-  found.
+  found. <!-- wn: open=recordings icon=externaldrive title="Which Folders Count as Sources" -->
 
 **History and periods**
 
 - Trends and Memory Guard share one period menu: Last 24 Hours, Last 3
   Days, Last 7 Days, Last 14 Days, Last 30 Days and Last 90 Days. Each
-  screen remembers its own choice.
+  screen remembers its own choice. <!-- wn: open=guard icon=calendar title="One Period Menu" -->
 - Last 24 Hours shows one bar per hour; longer periods show one bar per
   day, with today counted as one of them. Trends adds charts for memory
-  freed and disk space removed beside the guard's events.
+  freed and disk space removed beside the guard's events. <!-- wn: open=trends icon=chart.bar title="Bars by Hour and by Day" -->
 - While a new period loads, the numbers on screen stay and a small
   spinner beside the menu shows it is working. Trends no longer offers
-  All Time; the longest period is 90 days.
-- Opening an event from Memory Guard's list now always finds it.
+  All Time; the longest period is 90 days. <!-- wn: open=trends icon=arrow.triangle.2.circlepath title="Numbers Stay While a Period Loads" -->
+- Opening an event from Memory Guard's list now always finds it. <!-- wn: open=guard icon=checkmark.circle title="Guard Events Always Open" -->
 
 **The window**
 
 - The sidebar button shows whether the sidebar is open, and hiding or
   showing the sidebar keeps your window the size it is. With the sidebar
   hidden, rest the pointer at the window's left edge to see it over the
-  content; it goes away when you move off, choose a row or press Escape.
+  content; it goes away when you move off, choose a row or press Escape. <!-- wn: open=- icon=sidebar.left title="A Sidebar You Can Tuck Away" -->
 - Empty and loading screens sit in the middle of the space they have,
-  with the button that helps, and busy screens show a spinner.
-- Icons sit centred on rows with two lines of text.
+  with the button that helps, and busy screens show a spinner. <!-- wn: open=- icon=rectangle.center.inset.filled title="Centered Empty and Loading Screens" -->
+- Icons sit centred on rows with two lines of text. <!-- wn: open=- icon=list.bullet title="Centered Icons on Two-Line Rows" -->
 
 Minor fixes and improvements throughout.
 
 ## v2.70.0 — Every screen rebuilt the same way, with tabs and groups
+<!-- wn: released=2026-11-13 -->
 
 Every screen of the main window has been rebuilt to read the same way: the
 kinds of thing a screen shows are tabs with a count, rows are grouped under
@@ -85,73 +105,74 @@ show what is in it. Controls are the standard Mac ones throughout.
 **Screens**
 
 - Overview is a grid of boxes for memory, storage, the guard, the schedule
-  and the week, with a Needs Attention list only when something needs you.
+  and the week, with a Needs Attention list only when something needs you. <!-- wn: open=overview icon=gauge.with.dots.needle.33percent title="Overview as a Grid of Boxes" -->
 - Activity's tabs open with Command-1 to Command-4 (the Go menu moved to
   Control-Command), and a finished run shows its results in tabs and groups,
-  with its raw output inside the app.
+  with its raw output inside the app. <!-- wn: open=activity icon=list.bullet.rectangle title="Activity Tabs and Run Results" -->
 - Monitor is one table of every app and tool with its memory and processor
   use and a details panel. It says what kind of thing each group is, why one
   cannot be stopped, and warns before you stop a remote-access tool such as
   Tailscale. Each row of "Where Your Memory Is" opens a screen of its own,
-  including a new Swap Used, showing the last half hour.
+  including a new Swap Used, showing the last half hour. <!-- wn: open=monitor icon=gauge.with.dots.needle.67percent title="Monitor as One Table" -->
 - Memory Guard reads as a day-by-day history of what it stopped or flagged.
   It opens on the last 24 hours, with Last 3 Days, Last 7 Days and Last 90
   Days to choose from, and remembers your choice. Memory Cleanup is a
-  preview you tick before anything is closed.
+  preview you tick before anything is closed. <!-- wn: open=guard icon=shield.lefthalf.filled title="Memory Guard's Day-by-Day History" -->
 - Caches & Builds, Downloads and Temp & Agents are each one screen: Preview,
   tick, Apply, with every earlier run under History. A preview keeps its own
-  setting, such as Deep or Delete Permanently, and applies exactly that.
+  setting, such as Deep or Delete Permanently, and applies exactly that. <!-- wn: open=caches icon=shippingbox title="One Screen per Cleanup" -->
 - Disk now forecasts how long your free space will last. Spotlight lists
-  your developer folders with a checkbox to keep it out of each one.
+  your developer folders with a checkbox to keep it out of each one. <!-- wn: open=disk icon=internaldrive title="Disk Forecast and Spotlight Folders" -->
 - New under Storage: Time Machine lists the local snapshots holding space
   you have freed, Unused Apps finds apps you have not opened for six months
   or more, with their support files, and Old Recordings lists recording
-  folders older than 90 days.
+  folders older than 90 days. <!-- wn: open=timemachine icon=clock.arrow.circlepath title="Time Machine, Unused Apps and Old Recordings" -->
 - Login & Startup Items has tabs for Apps, Background Items, Leftovers from
   removed apps and Changes; Network groups programs by app with your last 60
-  snapshots; Reports open as documents with sections you can fold.
+  snapshots; Reports open as documents with sections you can fold. <!-- wn: open=loginitems icon=person.crop.circle.badge.questionmark title="Login Items, Network and Reports" -->
 - Trends adds up what cleanups removed instead of showing 0 KB, and Undo is
   grouped by day and cleanup, with a removed app coming back whole or one
-  file at a time.
+  file at a time. <!-- wn: open=trends icon=chart.xyaxis.line title="Trends Totals and Grouped Undo" -->
 - The menu-bar panel lists memory by app with icons, and its Memory tab
-  shows the same figures and pressure graph as Activity Monitor.
+  shows the same figures and pressure graph as Activity Monitor. <!-- wn: open=- icon=menubar.rectangle title="A Richer Menu-Bar Panel" -->
 
 **Your files and apps**
 
 - Downloads, Unused Apps and Old Recordings move what you approve to the
   Trash, and Undo can put it back. Each screen says whether it moves to the
   Trash or deletes for good. Undo restores an item only when it can tell it
-  is still the same one; otherwise Finder's Put Back still works.
+  is still the same one; otherwise Finder's Put Back still works. <!-- wn: open=undo icon=trash title="Cleanups Use the Trash and Undo" -->
 - Files that exist only in iCloud are never moved by any cleanup, scheduled
   ones included, because emptying the Trash would delete them from iCloud and
-  your other devices. They are listed under "Only in iCloud".
+  your other devices. They are listed under "Only in iCloud". <!-- wn: open=- icon=icloud title="iCloud Files Are Never Moved" -->
 - Unused Apps never offers an app that is running, runs in the background,
   opens at login or needs an administrator, and takes only files that belong
   to the app itself. A recording folder with any part that cannot be read is
-  kept.
+  kept. <!-- wn: open=unused icon=app.badge.checkmark title="Safer Unused App Cleanup" -->
 - Deleting Time Machine snapshots cannot be undone; backups on the backup
   disk are never touched. It needs a one-time permission for that one
   command, given with "Allow…" and an administrator password, after which
   any program on your account can delete snapshots. "Remove Permission…" or
   the Turn Off or Remove screen takes it away. In Terminal, the snapshot
-  script now only looks unless you tell it to apply.
+  script now only looks unless you tell it to apply. <!-- wn: open=timemachine icon=lock.shield title="Time Machine Snapshot Permission" -->
 - Apps are only asked to quit. Stop asks politely first, Force Stop is a
   separate choice you confirm, and nothing is stopped that is a live coding
-  session or has changed since you looked.
+  session or has changed since you looked. <!-- wn: open=monitor icon=xmark.circle title="Stopping Apps Politely" -->
 - The app now runs with macOS's hardened runtime, so macOS may ask once more
-  for a permission you gave before.
+  for a permission you gave before. <!-- wn: open=- icon=checkmark.shield title="Hardened Runtime" -->
 
 **Updates**
 
 - A copy built from your own clone can follow Releases, Beta (when your
   clone is on the development branch) or This Copy, chosen on the Updates
-  screen. Nothing updates by itself.
+  screen. Nothing updates by itself. <!-- wn: open=update icon=arrow.triangle.branch title="Release, Beta and This Copy Channels" -->
 - A copy built between releases shows a development version such as
-  2.70.1-dev.12 and is offered the next release when it comes out.
+  2.70.1-dev.12 and is offered the next release when it comes out. <!-- wn: open=update icon=hammer title="Development Versions" -->
 
 Minor fixes and improvements throughout.
 
 ## v2.69.2 — Process rows no longer show a program's environment
+<!-- wn: released=2026-11-11 -->
 
 - A process row could show part of a program's environment after its name,
   and an environment can hold a password or an API key. It happened for
@@ -173,6 +194,7 @@ Minor fixes and improvements throughout.
   alone.
 
 ## v2.69.1 — Large Downloads reviews can be applied again
+<!-- wn: released=2026-11-11 -->
 
 - Reviews of very large cleanups can be applied again. If your Downloads
   folder holds thousands of old files, the review used to say it couldn't find
@@ -196,6 +218,7 @@ Minor fixes and improvements throughout.
   start in the middle of an accented character.
 
 ## v2.69.0 — A new main window, and cleanups you can watch, stop and look back on
+<!-- wn: released=2026-11-10 -->
 
 Mac Analyzers has a new main window. The sidebar is organised by what you
 want to look at — Memory, Storage, System, History — and can be hidden. Back
@@ -258,6 +281,7 @@ Fixed: web-page processes belonging to Safari and other apps were listed
 under the name "com" in the menu-bar process list.
 
 ## v2.68.1 — Memory cleanup works on every Mac again
+<!-- wn: released=2026-11-10 -->
 
 This release fixes two problems in version 2.68.0 that stopped cleanups
 from running. Nothing else changes.
@@ -273,6 +297,7 @@ from running. Nothing else changes.
   they find.
 
 ## v2.68.0 — See where all of your memory goes
+<!-- wn: released=2026-11-10 -->
 
 The Monitor screen now accounts for every running process instead of only
 the biggest few. Open it to see how much memory is in use and what that
@@ -377,12 +402,14 @@ Storage Clean panes stop occasionally showing an almost-empty "latest
 run" that was really just the previous run's DONE trailer.
 
 ## v2.64.1 — Stop and Details stay visible in the Monitor list
+<!-- wn: released=2026-08-01 -->
 
 The new process table put Stop/Quit and Details behind a right-click. That
 is fine if you already know to try it and invisible if you don't, so both
 are back as buttons on every row. Right-click still works as a shortcut.
 
 ## v2.64.0 — Readable by everyone, and the reports finally have a home
+<!-- wn: released=2026-08-01 -->
 
 New Reports screen. The two read-only analyzers — "where is my memory
 going", "what is using my disk" — could only be run from a terminal until
@@ -408,6 +435,7 @@ Monitor lists standalone processes in a sortable table, with search in the
 toolbar. Apps with helper processes keep their expandable grouping.
 
 ## v2.63.0 — Untick anything you do not want touched
+<!-- wn: released=2026-08-01 -->
 
 Every item in a cleaner's preview now has a checkbox, with Select all and
 Select none, and a running count. Untick a row and it is genuinely left
@@ -421,6 +449,7 @@ Apply is now unavailable when nothing is selected, rather than when nothing
 was found.
 
 ## v2.62.1 — Personal settings were being ignored by the analyzers
+<!-- wn: released=2026-08-01 -->
 
 A change in v2.61.0 broke the line that loads config.local.sh, so the
 analyzers fell back to their built-in defaults: a custom memory limit, a
@@ -435,6 +464,7 @@ verified against a real settings file in both the bundled and source
 layouts.
 
 ## v2.62.0 — A Support screen that is actually reachable
+<!-- wn: released=2026-08-01 -->
 
 The sidebar gained a Support entry. It opens a real screen that lists what
 Mac Analyzers gives you for nothing — continuous memory watching with the
@@ -444,6 +474,7 @@ sidebar entry existed in the router but had no row, so it could only be
 reached by accident, and it showed the About screen a second time.
 
 ## v2.61.0 — Setup screen, and the analyzers now ship inside the app
+<!-- wn: released=2026-08-01 -->
 
 New Setup screen, first in the sidebar. It checks nine things about this
 particular Mac — are the background jobs actually loaded, are alerts
@@ -855,12 +886,14 @@ Also: `open -a "Mac Analyzers" --args --pane <screen>` deep-links straight
 to any settings screen — scripting hook and testing door.
 
 ## v2.23.2 — Brand card reads as a button at rest
+<!-- wn: released=2026-08-01 -->
 
 Persistent glass container with a hairline border around the sidebar brand
 card — discoverable without hovering; hover brightens, click opens the
 Overview dashboard.
 
 ## v2.23.1 — Guaranteed back navigation, glass-hover brand card
+<!-- wn: released=2026-08-01 -->
 
 - back chevron is now unconditional for drilled screens: history-first,
   and if no history stop exists it pops the on-screen stack directly —
@@ -904,6 +937,7 @@ Overview dashboard.
   carries 24 Hours / 14 / 90 Days / All Time, highlighting when active
 
 ## v2.21.1 — Full-height toolbar strip
+<!-- wn: released=2026-08-01 -->
 
 unifiedCompact read cramped next to System Settings — the strip is now the
 standard unified height, same single row: chevron pair leading, title
@@ -1119,6 +1153,7 @@ menu and Settings.
   app/UI PRs
 
 ## v2.7.2 — Fix light-band regression — header back inside the Form, no hard scroll edge
+<!-- wn: released=2026-07-31 -->
 
 The v2.7.1 header hoist put the pane header into the toolbar's backdrop
 region: rendered as a light band with a doubled title in dark mode. Header
@@ -1127,6 +1162,7 @@ returns inside the Form (clear row, centered with spacers) and the
 from v2.7.1 (logs path state, hidden floating chevron) are unaffected.
 
 ## v2.7.1 — Fix logs child navigation, remove floating glass chevron, center all pane headers
+<!-- wn: released=2026-07-31 -->
 
 - logs navigation: real @State path replacing the computed binding that
   fought SwiftUI's transitions (sidebar children bounced back to the landing

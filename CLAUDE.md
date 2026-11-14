@@ -451,7 +451,28 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   for someone who uses the app and has never seen the code — full sentences,
   what changed for THEM, no commit shorthand, no code names. The gate runs
   three times (cut-release, the pre-merge-commit hook on main, release.sh),
-  so a hand-made merge cannot ship without one either.
+  so a hand-made merge cannot ship without one either. The app's What's New
+  lists each bullet as a feature row (icon, one line, version and date,
+  grouped by the screen it belongs to; each opens its own screen with a button
+  to the real one), so from v2.71.0 every bullet ends with ONE tag GitHub does
+  not show, `<!-- wn: open=<screen> icon=<SF Symbol> title="Short Title" -->`
+  (`open` is a deep-link name such as `monitor`, `guard` or `recordings`, or `-`
+  for a change across the app; one screen per bullet; `title` is optional and
+  title style; `image=` is reserved and ignored). The date under the heading
+  (`<!-- wn: released=2026-11-14 -->`) is written by `cut-release.sh`, never by
+  hand. `changelog-check.sh --print` removes every tag, so the GitHub release
+  body is the same prose as ever, and the prose rules run on the text without
+  them. ONE parser reads the tags, `AnalyzersKit/Updates/WhatsNew+Parse.swift`
+  (`agent-runner --probe-whats-new[-fixture]`); whether a screen and an icon
+  really exist only the app can say, so `changelog-check.sh --on-mac` asks
+  `snapshot-runner --check-whats-new` from `scripts/check.sh changelog`,
+  `cut-release.sh` and `release.sh` (a Mac without Swift cannot release; Linux
+  pull requests check the text rules and say the rest was not run). The sidebar
+  card that announces the newest unseen release is `whatsNew.seenVersion` in the
+  defaults (never on a development build or a first launch); render it with
+  `snapshot-runner sidebar:whatsNewCard out.png`, and What's New with
+  `updates:whatsNew`, `updates:whatsNew:latest` and `updates:whatsNew:<version>`
+  (`MA_CHANGELOG=app/Fixtures/whats-new.md` for stand-in releases).
 - Installed clones update via `./upgrade.command` (Finder double-clickable):
   `git pull --ff-only` → `app/build.sh` (reinstalls to /Applications) → both
   `*-manage-agents.sh install` → relaunch the app (prefers the /Applications
