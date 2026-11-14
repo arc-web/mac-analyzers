@@ -30,7 +30,7 @@ struct SidebarWhatsNewCard: View {
             }
         }
         .task {
-            WhatsNewSeen.migrate(installed: updates.installed)
+            await WhatsNewSeen.migrate(installed: updates.installed)
             // the newest shipped release in the bundled notes; the unreleased section is never announced. Reading a
             // small file is not one of the expensive loads that queue behind each other, so it does not join them: the
             // card is there when the sidebar is, not after the screens' reads
@@ -47,9 +47,9 @@ struct SidebarWhatsNewCard: View {
         let version = release.version ?? ""
         return GroupBox {
             VStack(alignment: .leading, spacing: Tokens.Space.m) {
-                Text(release.releaseTitle)
+                // one short line that always fits; the release's own title is the tooltip
+                Text(Names.WhatsNew.featureCount(release.items.count))
                     .font(.callout)
-                    .lineLimit(2)      // the card is short by design; the whole title is the tooltip
                     .help(release.releaseTitle)
                 HStack(spacing: Tokens.Space.m) {
                     ForEach(release.items.prefix(3)) { item in
@@ -60,7 +60,8 @@ struct SidebarWhatsNewCard: View {
                 }
                 .accessibilityHidden(true)
                 Button(Names.WhatsNew.seeWhatsNew) {
-                    WhatsNewSeen.markSeen(version)
+                    // not marked seen here: the Updates screen marks the installed version seen once it has read what
+                    // was seen before, so the rows of this release still carry "New" when it opens
                     navigator.open(target: "updates:whatsNew:latest")
                 }
                 .buttonStyle(.borderedProminent)

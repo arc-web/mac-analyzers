@@ -53,6 +53,8 @@ entry '<!-- wn: icon=shield -->' "$good2" > "$work/noopen.md";               exp
 entry '<!-- wn: open=guard icon=shield title="lowercase title" -->' "$good2" > "$work/title.md"; expect fail "a lowercase title fails" "$work/title.md"
 entry '<!-- wn: open=guard icon=shield title="'"$(printf 'Very %.0s' {1..14})"'Long" -->' "$good2" > "$work/long.md"; expect fail "a title over 60 characters fails" "$work/long.md"
 entry "$good1" "$good2" '<!-- wn: open=guard icon=shield -->' > "$work/stray.md"; expect fail "a tag outside a bullet fails" "$work/stray.md"
+entry '<!-- wn: open=guard icon=shield title="Stop > Quit" -->' "$good2" > "$work/angle.md"; expect fail "a title with a > fails" "$work/angle.md"
+  grep -q 'contains a ">"' "$work/out" && echo "  ok   and says why" || { echo "  FAIL the > message"; failures=$((failures + 1)); }
 # a tag in the middle of a bullet: the comment, then more words on the last line
 sed 's/Guard Events as Rows" -->/Guard Events as Rows" --> and more words/' "$work/good.md" > "$work/mid.md"; expect fail "a tag that is not at the end fails" "$work/mid.md"
 # prose rules still judge the prose: a code name is refused, a screen name inside a tag is not
@@ -87,6 +89,24 @@ else echo "  FAIL restamp"; failures=$((failures + 1)); fi
 # --tags
 if [[ "$(MA_CHANGELOG="$work/good.md" "$gate" --tags 2.99.0 | head -1)" == $'guard\tshield.lefthalf.filled\tGuard Events as Rows' ]]; then echo "  ok   --tags prints screen, icon and summary"
 else echo "  FAIL --tags"; failures=$((failures + 1)); fi
+
+# the app's own reading (--on-mac asks the parser the app uses): a tag on a line of its own under its bullet still
+# belongs to that bullet, and a bullet the app would read as untagged fails even where the text rules let it by.
+# Runs only on a Mac with Swift (exit 2 = not run).
+onmac() {  # onmac pass|fail "<name>" <changelog file>
+  local want="$1" name="$2" file="$3" got=pass rc=0
+  MA_CHANGELOG="$file" "$gate" --on-mac 2.99.0 >"$work/out" 2>&1 || rc=$?
+  if (( rc == 2 )); then echo "  skip $name (no Mac with Swift)"; return; fi
+  (( rc == 0 )) || got=fail
+  if [[ "$got" == "$want" ]]; then echo "  ok   $name"; else echo "  FAIL $name: wanted $want, got $got"; sed 's/^/       /' "$work/out"; failures=$((failures + 1)); fi
+}
+entry "$good1" "$good2" > "$work/own-ok.md"
+onmac pass "a fully tagged entry passes the app's reading" "$work/own-ok.md"
+awk -v t="$good1" '{ if (index($0, t)) { sub(/ *<!-- wn:.*$/, ""); print; print "  " t } else print }' "$work/own-ok.md" > "$work/ownline.md"
+expect pass "a tag on its own line under its bullet passes the text rules" "$work/ownline.md"
+onmac pass "that tag still belongs to its bullet in the app" "$work/ownline.md"
+entry "" "$good2" > "$work/untagged-app.md"
+onmac fail "a bullet with no tag fails the app's reading" "$work/untagged-app.md"
 
 if (( failures > 0 )); then echo "changelog-tags-test: $failures check(s) failed" >&2; exit 1; fi
 echo "changelog-tags-test: every tag rule holds"

@@ -44,7 +44,7 @@ struct WhatsNewRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens this feature")
+        .accessibilityHint(Names.WhatsNew.opensThisFeature)
     }
 }
 
@@ -56,7 +56,7 @@ enum WhatsNewText {
     }
 
     static func arrived(version: String?, released: Date?) -> String {
-        guard let version else { return "Not yet released" }
+        guard let version else { return Names.WhatsNew.notYetReleased }
         let day = released.map { $0.formatted(.dateTime.day().month(.abbreviated)) }
         return ["v\(version)", day].compactMap { $0 }.joined(separator: " · ")
     }

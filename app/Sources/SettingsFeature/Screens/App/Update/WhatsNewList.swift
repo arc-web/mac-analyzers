@@ -48,16 +48,19 @@ struct WhatsNewSections: View {
         let unreleased = notes.filter(\.isUnreleased)
         let shown = releasedItems
         let capped = Array(shown.prefix(limit))
+        // grouped once per render: the first row, which a link scrolls to, is found from these and not by every row
+        let groups = WhatsNewGroups.build(items: capped)
+        let first = unreleased.first?.listedItems.first?.id ?? groups.first?.items.first?.id
         ForEach(unreleased) { note in
             Section {
-                rows(note.items)
+                rows(note.listedItems, first: first)
             } header: {
-                header(title: note.title, symbol: "hammer", count: note.items.count)
+                header(title: note.title, symbol: "hammer", count: note.listedItems.count)
             }
         }
-        ForEach(WhatsNewGroups.build(items: capped)) { group in
+        ForEach(groups) { group in
             Section {
-                rows(group.items)
+                rows(group.items, first: first)
             } header: {
                 header(title: group.title, symbol: group.symbol, count: group.items.count)
             }
@@ -65,7 +68,7 @@ struct WhatsNewSections: View {
         if shown.count > capped.count {
             Button { limit += 200 } label: {
                 Label(Names.Raw.showOlder, systemImage: "clock.arrow.circlepath")
-                Text("\(shown.count - capped.count) earlier features").foregroundStyle(.secondary)
+                Text(Names.WhatsNew.earlierFeatures(shown.count - capped.count)).foregroundStyle(.secondary)
             }
         }
     }
@@ -74,21 +77,16 @@ struct WhatsNewSections: View {
     private var releasedItems: [WhatsNewItem] {
         let released = notes.filter { !$0.isUnreleased }
         let chosen = filter == .latest ? Array(released.prefix(1)) : released
-        return chosen.flatMap(\.items)
+        return chosen.flatMap(\.listedItems)
     }
 
-    private func rows(_ items: [WhatsNewItem]) -> some View {
+    private func rows(_ items: [WhatsNewItem], first: String?) -> some View {
         ForEach(items) { item in
             WhatsNewRow(item: item, isNew: WhatsNewSeen.isNew(item.version, seen: seen)) {
                 navigator.push(.app(.whatsNew(item.id)))
             }
-            .id(item.id == firstID ? Self.anchor : item.id)
+            .id(item.id == first ? Self.anchor : item.id)
         }
-    }
-
-    private var firstID: String? {
-        notes.first(where: \.isUnreleased)?.items.first?.id
-            ?? WhatsNewGroups.build(items: Array(releasedItems.prefix(limit))).first?.items.first?.id
     }
 
     private func header(title: String, symbol: String, count: Int) -> some View {

@@ -8,13 +8,32 @@ enum WhatsNewSeen {
     /// What the same fact was called before What's New had rows; read once and then forgotten.
     private static let oldKey = "lastSeenChangelog"
 
-    /// Makes sure there is a value. A copy that has none and never wrote the old key is a first launch, and a first
-    /// launch must not announce changes the person never had: it starts as having seen what is installed.
-    static func migrate(installed: String) {
+    /// Makes sure there is a value. A copy with none and no old key is either a new install or one that updated into the
+    /// release that brought the card. A new install (no setup record, no settings file, no background job: the Welcome
+    /// flow's own test) must not be told about changes it never had, so it starts as having seen what is installed
+    /// (the Welcome flow writes the same value). An existing install starts at the release before the installed one,
+    /// so it sees the card once for the release that shipped it.
+    static func migrate(installed: String) async {
         let defaults = UserDefaults.standard
         guard defaults.string(forKey: key) == nil else { return }
-        defaults.set(defaults.string(forKey: oldKey) ?? installed, forKey: key)
-        defaults.removeObject(forKey: oldKey)
+        if let old = defaults.string(forKey: oldKey) {
+            defaults.set(old, forKey: key)
+            defaults.removeObject(forKey: oldKey)
+            return
+        }
+        let setup = await SetupInputs.read()
+        // another caller may have written it while this one was reading
+        guard defaults.string(forKey: key) == nil else { return }
+        let existing = SetupState.load() != nil || setup.settingsFileExists || setup.jobs.contains(where: \.loaded)
+        let before = existing ? releaseBefore(installed) : nil
+        defaults.set(before ?? installed, forKey: key)
+    }
+
+    /// The newest release in the bundled notes that is older than `installed`.
+    static func releaseBefore(_ installed: String) -> String? {
+        ReleaseNote.bundled(includeNext: false).compactMap(\.version)
+            .filter { UpdateChecker.isNewer(installed, than: $0) }
+            .max { UpdateChecker.compare($0, $1) == .orderedAscending }
     }
 
     static var version: String? { UserDefaults.standard.string(forKey: key) }

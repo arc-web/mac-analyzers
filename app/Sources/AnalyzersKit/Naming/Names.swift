@@ -716,6 +716,7 @@ public enum Names {
         public static let earlierChanges = "Earlier Changes"
         public static let aboutThisRelease = "About This Release"
         public static let moreInThisRelease = "More in This Release"
+        public static let otherNotes = "Other Notes"
         public static let seeWhatsNew = "See What's New"
         public static let new = "New"
         public static let dismiss = "Dismiss"
@@ -723,11 +724,21 @@ public enum Names {
         public static let allReleases = "All Releases"
         public static let latestRelease = "Latest Release"
         public static let feature = "Feature"
+        public static let featureNotFound = "Feature Not Found"
+        public static let release = "Release"
+        public static let releaseTitle = "Release Title"
+        /// Sentences and captions, not names: the check of capitalization does not judge them.
+        public static let notYetReleased = "Not yet released"
+        public static let notInTheseNotes = "It is not in the release notes this copy carries."
+        public static let opensThisFeature = "Opens this feature"
+        public static func earlierFeatures(_ count: Int) -> String { "\(count) earlier features" }
+        /// "7 new features": the sidebar card's one line about a release.
+        public static func featureCount(_ count: Int) -> String { count == 1 ? "1 new feature" : "\(count) new features" }
         /// "New in 2.71": the sidebar card's title.
         public static func newIn(_ version: String) -> String { "New in \(version)" }
         /// "Open Memory Guard": the button on a feature's screen.
         public static func open(_ screen: String) -> String { "Open \(screen)" }
-        public static let named = [title, throughoutTheApp, earlierChanges, aboutThisRelease, moreInThisRelease,
+        public static let named = [title, throughoutTheApp, earlierChanges, aboutThisRelease, moreInThisRelease, otherNotes, featureNotFound, release, releaseTitle,
                                    seeWhatsNew, new, dismiss, filter, allReleases, latestRelease, feature]
     }
 

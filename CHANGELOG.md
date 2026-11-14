@@ -46,6 +46,7 @@ is two bullets. The release date is added when the release is cut.
   nothing and says so. <!-- wn: open=guard icon=hand.raised title="Live Coding Sessions Are Left Alone" -->
 
 ## v2.71.0 — Recording sources, one period menu and a sidebar you can tuck away
+<!-- wn: released=2026-11-14 -->
 
 Old Recordings now works for everyone, not only for one folder, and the
 screens that show history all choose their period the same way.

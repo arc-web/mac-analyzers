@@ -34,6 +34,15 @@ public struct WhatsNewItem: Identifiable, Hashable, Sendable {
     public let image: String?
     /// The bold line the bullet sat under: the fallback group of an untagged bullet.
     public let topic: String?
+    /// True for the "Other Notes" row of a release: the paragraphs after its bullets, not a bullet.
+    public let isNotes: Bool
+
+    public init(id: String, version: String?, released: Date?, releaseTitle: String, summary: String, tagTitle: String?,
+                body: String, scope: Scope, symbol: String?, image: String?, topic: String?, isNotes: Bool = false) {
+        self.id = id; self.version = version; self.released = released; self.releaseTitle = releaseTitle
+        self.summary = summary; self.tagTitle = tagTitle; self.body = body; self.scope = scope; self.symbol = symbol
+        self.image = image; self.topic = topic; self.isNotes = isNotes
+    }
 
     /// The deep-link target `Open <Screen>` goes to; nil for a change across the app and for an untagged bullet.
     public var target: String? {
@@ -69,6 +78,18 @@ public struct ReleaseNote: Identifiable, Sendable {
     public func renamed(_ title: String) -> ReleaseNote {
         ReleaseNote(title: title, version: version, released: released, intro: intro,
                     items: items.map { $0.renamed(releaseTitle: title) }, closing: closing)
+    }
+
+    /// What the list shows for this release: its features, then one "Other Notes" row when the entry has paragraphs
+    /// after its bullets (a "Fixed: …" note) that no feature carries, so nothing the old screen showed is lost.
+    public var listedItems: [WhatsNewItem] { items + [notesItem].compactMap { $0 } }
+
+    /// The feature-like row for `closing`; nil when there is none. Its screen shows the paragraphs.
+    public var notesItem: WhatsNewItem? {
+        guard !closing.isEmpty else { return nil }
+        return WhatsNewItem(id: "\(version ?? "next")#notes", version: version, released: released, releaseTitle: releaseTitle,
+                            summary: Names.WhatsNew.otherNotes, tagTitle: nil, body: closing.joined(separator: "\n\n"),
+                            scope: .untagged, symbol: "note.text", image: nil, topic: Names.WhatsNew.otherNotes, isNotes: true)
     }
 
     /// What the unreleased section is called on screen.
@@ -111,6 +132,6 @@ public struct ReleaseNote: Identifiable, Sendable {
 extension WhatsNewItem {
     func renamed(releaseTitle: String) -> WhatsNewItem {
         WhatsNewItem(id: id, version: version, released: released, releaseTitle: releaseTitle, summary: summary, tagTitle: tagTitle,
-                     body: body, scope: scope, symbol: symbol, image: image, topic: topic)
+                     body: body, scope: scope, symbol: symbol, image: image, topic: topic, isNotes: isNotes)
     }
 }

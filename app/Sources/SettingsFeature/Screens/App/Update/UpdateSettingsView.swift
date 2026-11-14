@@ -97,6 +97,8 @@ struct UpdateSettingsView: View {
             }
         }
         .onChange(of: notes.count) { applyPendingLink(proxy) }
+        // a link that arrives while this screen is already showing and loaded is applied then, not at the next reload
+        .onChange(of: navigator.pendingIntent) { applyPendingLink(proxy) }
         .listStyle(.inset)
         }
         }
@@ -117,7 +119,7 @@ struct UpdateSettingsView: View {
         }
         .task(id: "\(updates.channel.rawValue)\(updates.channelChangelog?.count ?? 0)") {
             if !hasReadSeen {
-                WhatsNewSeen.migrate(installed: installed)
+                await WhatsNewSeen.migrate(installed: installed)
                 seenBefore = WhatsNewSeen.version
                 hasReadSeen = true
                 // being on this screen is seeing what the installed version brought

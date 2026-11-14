@@ -107,14 +107,16 @@ bullet_records() {
       if (!inb) return
       n = 0; rest = text
       while ((k = index(rest, "<!-- wn:")) > 0) { n++; rest = substr(rest, k + 8) }
-      ends = (n == 1 && text ~ /<!-- wn:[^>]*-->[ \t]*$/ && lastline ~ /<!-- wn:/) ? 1 : 0
+      ends = (n == 1 && text ~ /<!-- wn:.*-->[ \t]*$/ && lastline ~ /<!-- wn:/) ? 1 : 0
       tag = ""; body = text
       if (n >= 1) { k = index(text, "<!-- wn:"); tag = substr(text, k + 8); sub(/-->.*$/, "", tag); body = substr(text, 1, k - 1); sub(/[ \t]+$/, "", body) }
       t = field(tag, "title"); if (t == "") t = summary(body)
       # anything in the tag that is not open=, icon=, title= or image= makes it unreadable
       left = tag; gsub(/title="[^"]*"/, "", left); gsub(/(open|icon|image)=[^ \t]+/, "", left); gsub(/[ \t]/, "", left)
       if (n >= 1 && left != "") { badtag = 1 } else { badtag = 0 }
-      printf "%d\037%d\037%d\037%s\037%s\037%s\037%s\n", startline, n, ends, (badtag ? "!" : field(tag, "open")), field(tag, "icon"), field(tag, "title"), t
+      # a ">" inside the comment (a title with one) ends it early for every reader that is not this one
+      angle = (n >= 1 && index(tag, ">") > 0)
+      printf "%d\037%d\037%d\037%s\037%s\037%s\037%s\n", startline, n, ends, (angle ? "!>" : (badtag ? "!" : field(tag, "open"))), field(tag, "icon"), field(tag, "title"), t
       inb = 0
     }
     /^[ \t]*[-*][ \t]+/ { flush(); inb = 1; startline = NR; text = $0; sub(/^[ \t]*[-*][ \t]+/, "", text); lastline = $0; next }
@@ -153,10 +155,17 @@ if [[ "$mode" == "onmac" ]]; then
     exit 2
   fi
   build_path="${MA_BUILD_PATH:-$root/app/.build}"
-  ( cd "$root/app" && env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
-      swift build --disable-keychain --build-path "$build_path" --product SnapshotRunner ) >/dev/null 2>&1 \
-    || { echo "changelog: could not build the tool that checks the tags." >&2; exit 1; }
-  "$build_path/debug/SnapshotRunner" --check-whats-new "$changelog" "$version"
+  build_log="$(mktemp)"
+  if ! ( cd "$root/app" && env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
+      swift build --disable-keychain --build-path "$build_path" --product SnapshotRunner ) >"$build_log" 2>&1; then
+    echo "changelog: could not build the tool that checks the tags. The build said:" >&2
+    grep -a -E ': error: ' "$build_log" | cut -c1-300 | awk '!seen[$0]++' | head -8 >&2 || true
+    tail -n 5 "$build_log" | cut -c1-300 >&2
+    rm -f "$build_log"
+    exit 1
+  fi
+  rm -f "$build_log"
+  "$build_path/debug/SnapshotRunner" --check-whats-new "$changelog" "$version" "$WN_FIRST"
   exit $?
 fi
 
@@ -200,6 +209,7 @@ if version_at_least "$version" "$WN_FIRST"; then
     if (( tag_count == 0 )); then fail "the bullet at line $at of the entry has no What's New tag (<!-- wn: open=… icon=… -->)"; continue; fi
     (( tag_count == 1 )) || { fail "the bullet at line $at of the entry has $tag_count What's New tags; it takes one"; continue; }
     (( at_end == 1 )) || { fail "the What's New tag of the bullet at line $at is not at the end of the bullet's last line"; continue; }
+    [[ "$open" != "!>" ]] || { fail "the tag of the bullet at line $at contains a \">\" (a title cannot hold one: it would end the comment early)"; continue; }
     [[ "$open" == "-" || "$open" =~ ^[a-zA-Z][a-zA-Z0-9:._-]*$ ]] || fail "the tag of the bullet at line $at has no usable open= (a screen name, or - for the whole app)"
     [[ "$icon" =~ ^[a-z0-9.]+$ ]] || fail "the tag of the bullet at line $at has no usable icon= (an SF Symbol name)"
     if [[ -n "$tag_title" ]]; then

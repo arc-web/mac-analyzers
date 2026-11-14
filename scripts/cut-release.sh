@@ -149,7 +149,7 @@ if [[ "$current" != "$version" ]]; then
     cp CHANGELOG.md "$rehearsal"
     MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --stamp "$version" "$released_on" >/dev/null
     MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --stamp "$version" "$released_on" >/dev/null
-    echo "  [dry-run] stamped a copy twice: $(grep -c 'wn: released=' "$rehearsal") release date line(s) in the copy; the notes file would have $(MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --print "$version" | grep -c 'wn:' || true) tag(s)"
+    echo "  [dry-run] stamped a copy twice: $(awk -v want="## v$version" 'index($0, want " ") == 1 || $0 == want { inside = 1; next } inside && /^## v[0-9]/ { exit } inside && /wn: released=/ { n++ } END { print n + 0 }' "$rehearsal") release date line(s) under v$version in the copy; the notes file would have $(MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --print "$version" | grep -c 'wn:' || true) tag(s)"
     rm -f "$rehearsal"
   fi
 else
