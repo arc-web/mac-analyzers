@@ -7,15 +7,7 @@ without an entry here — see `scripts/cut-release.sh`. The app lists each
 bullet as a feature of its own, so every bullet ends with a short tag that
 GitHub does not show; `scripts/changelog-check.sh` says what it must hold.
 
-## Next
-
-Notes for the release being worked on collect here. When it ships, this
-heading becomes its version and title, and this note is deleted. Every bullet
-ends with one tag after its last word, written exactly like this one: `<!-- wn: open=guard icon=shield.lefthalf.filled title="Short Title" -->`.
-The screen is a deep-link name such as `monitor`, `trends` or `recordings`
-(`-` for a change across the whole app), the icon is an SF Symbol, and the
-title is optional. One screen per bullet: a change that touches two screens
-is two bullets. The release date is added when the release is cut.
+## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
 
 - What's New now lists each new feature on its own, grouped by the screen it
   belongs to, with an icon and the date it arrived. Open one to read about it
@@ -48,6 +40,8 @@ is two bullets. The release date is added when the release is cut.
   Codex, Gemini CLI, Copilot, OpenCode and the rest of the list, and everything they
   started. If it ever cannot tell which programs belong to a coding session, it stops
   nothing and says so. <!-- wn: open=guard icon=hand.raised title="Live Coding Sessions Are Left Alone" -->
+
+Minor fixes and improvements throughout: Memory Guard's Never Close list also covers programs by name and the cleanups honour it, stopped programs always stay in the menu bar's Recent Events, and Trends no longer saves a period you only opened from a link.
 
 ## v2.71.0 — Recording sources, one period menu and a sidebar you can tuck away
 <!-- wn: released=2026-11-14 -->
