@@ -8,9 +8,14 @@ struct UpdateSettingsView: View {
 
     @Environment(UpdateState.self) private var updates
 
+    @Environment(Navigator.self) private var navigator
+
     @State private var notes: [ReleaseNote] = []
-    /// Which entries the reader opened or closed, by entry id.
-    @State private var expanded: [String: Bool] = [:]
+    @State private var filter: WhatsNewFilter = .all
+    /// The release seen before this visit, read once: opening the screen marks what is installed as seen, and the
+    /// "New" marks on the rows must still say what had not been.
+    @State private var seenBefore: String?
+    @State private var hasReadSeen = false
 
     // The latest release, whether one is newer and whether a check is running all come from the app's one
     // update state, so a check made here also reaches the sidebar, Overview and the menu-bar panel.
@@ -40,6 +45,7 @@ struct UpdateSettingsView: View {
 
     var body: some View {
         DataScreen(title: Names.Screen.updates, subtitle: updates.build.versionText) {
+        ScrollViewReader { proxy in
         List {
             UpdateChannelSection(updates: updates, checking: checking)
             Section {
@@ -87,31 +93,39 @@ struct UpdateSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             if !notes.isEmpty {
-                Section("What's New") {
-                    ForEach(Array(notes.enumerated()), id: \.element.id) { index, note in
-                        // one disclosed block, not rows: a release's notes open as one body
-                        DisclosureGroup(isExpanded: expansion(of: note, isNewest: index == 0)) {
-                            ReleaseNoteBody(note: note)
-                        } label: {
-                            Text(note.title)
-                                .font(.callout.weight(.medium))
-                        }
-                    }
-                }
+                WhatsNewSections(notes: notes, filter: filter, seen: seenBefore)
             }
         }
+        .onChange(of: notes.count) { applyPendingLink(proxy) }
+        // a link that arrives while this screen is already showing and loaded is applied then, not at the next reload
+        .onChange(of: navigator.pendingIntent) { applyPendingLink(proxy) }
         .listStyle(.inset)
         }
+        }
+        .toolbar {
+            ToolbarItem {
+                // a `Menu` shows its label in the toolbar, so the choice in force is the label
+                Menu {
+                    Picker(Names.WhatsNew.filter, selection: $filter) {
+                        ForEach(WhatsNewFilter.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label(filter.title, systemImage: filter.symbol)
+                }
+                .labelStyle(.titleAndIcon)
+                .help("Choose which releases \(Names.WhatsNew.title) lists")
+            }
+        }
         .task(id: "\(updates.channel.rawValue)\(updates.channelChangelog?.count ?? 0)") {
-            UserDefaults.standard.set(installed, forKey: "lastSeenChangelog")
-            let channel = updates.channel
-            let channelText = updates.channelChangelog
-            // Beta and This Copy read the unreleased section from THEIR changelog (development's, or the
-            // clone's with its uncommitted edits); the releases below are the bundled ones.
-            let includeNext = channel == .releases && updates.build.isDevelopment
-            // keyed by what the notes are made of: the channel, whether the unreleased part is in, and the text itself
-            await awaitLoad({ ReleaseNote.channelNotes(channel: channel, changelog: channelText, includeNext: includeNext) },
-                            key: "update.notes.\(channel).\(includeNext).\(channelText.hashValue)") { notes = $0 }
+            if !hasReadSeen {
+                await WhatsNewSeen.migrate(installed: installed)
+                seenBefore = WhatsNewSeen.version
+                hasReadSeen = true
+                // being on this screen is seeing what the installed version brought
+                WhatsNewSeen.markSeen(installed)
+            }
+            notes = await WhatsNewSource.notes(updates: updates)
         }
         .task {
             // always fresh when the pane opens — the cache is for background
@@ -120,12 +134,14 @@ struct UpdateSettingsView: View {
         }
     }
 
-    /// The newest entry starts open; every entry can be opened and closed.
-    /// (The binding used to be a constant, so older releases could never be
-    /// read at all — their arrows did nothing.)
-    private func expansion(of note: ReleaseNote, isNewest: Bool) -> Binding<Bool> {
-        Binding(
-            get: { expanded[note.id] ?? isNewest },
-            set: { expanded[note.id] = $0 })
+    /// `updates:whatsNew` scrolls to the list and `updates:whatsNew:latest` also narrows it to the newest release;
+    /// both only navigate.
+    private func applyPendingLink(_ proxy: ScrollViewProxy) {
+        guard !notes.isEmpty, let payload = navigator.takeIntent(for: AppGroup.updates), payload.hasPrefix("whatsNew") else { return }
+        if payload == "whatsNew:latest" { filter = .latest }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            withAnimation { proxy.scrollTo(WhatsNewSections.anchor, anchor: .top) }
+        }
     }
 }

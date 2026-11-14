@@ -744,6 +744,42 @@ public enum Names {
         public static let all = [last24, last3, last7, last14, last30, last90]
     }
 
+    // MARK: - What's New
+
+    public enum WhatsNew {
+        public static let title = "What's New"
+        public static let throughoutTheApp = "Throughout the App"
+        public static let earlierChanges = "Earlier Changes"
+        public static let aboutThisRelease = "About This Release"
+        public static let moreInThisRelease = "More in This Release"
+        public static let otherNotes = "Other Notes"
+        public static let seeWhatsNew = "See What's New"
+        public static let new = "New"
+        public static let dismiss = "Dismiss"
+        public static let filter = "Show"
+        public static let allReleases = "All Releases"
+        public static let latestRelease = "Latest Release"
+        public static let feature = "Feature"
+        public static let featureNotFound = "Feature Not Found"
+        public static let release = "Release"
+        public static let releaseTitle = "Release Title"
+        /// Sentences and captions, not names: the check of capitalization does not judge them.
+        public static let notYetReleased = "Not yet released"
+        public static let notInTheseNotes = "It is not in the release notes this copy carries."
+        public static let opensThisFeature = "Opens this feature"
+        /// "Notes for v2.71.0": the row under the "Other Notes" group; the unreleased section has no version.
+        public static func notesFor(_ version: String?) -> String { version.map { "Notes for v\($0)" } ?? "Notes for This Build" }
+        public static func earlierFeatures(_ count: Int) -> String { "\(count) earlier features" }
+        /// "7 new features": the sidebar card's one line about a release.
+        public static func featureCount(_ count: Int) -> String { count == 1 ? "1 new feature" : "\(count) new features" }
+        /// "New in 2.71": the sidebar card's title.
+        public static func newIn(_ version: String) -> String { "New in \(version)" }
+        /// "Open Memory Guard": the button on a feature's screen.
+        public static func open(_ screen: String) -> String { "Open \(screen)" }
+        public static let named = [title, throughoutTheApp, earlierChanges, aboutThisRelease, moreInThisRelease, otherNotes, featureNotFound, release, releaseTitle,
+                                   seeWhatsNew, new, dismiss, filter, allReleases, latestRelease, feature]
+    }
+
     // MARK: - Memory Guard
 
     public enum Guard {
@@ -896,6 +932,7 @@ public enum Names {
                  MemoryKind.showInMonitor, MemoryKind.overTime, MemoryKind.whoHoldsTheMost, MemoryKind.whatItIs].map { ("Memory kind", $0) }
         rows += Kind.all.map { ("Kind", $0) }
         rows += Period.all.map { ("Period", $0) }
+        rows += WhatsNew.named.map { ("What's New", $0) }
         rows += [Stop.stop, Stop.quit, Stop.forceStop, Stop.leaveRunning, Stop.leftAlone, Stop.leftAloneOne].map { ("Stop", $0) }
         rows += [Guard.stopped, Guard.alerts, Guard.period, Guard.show, Guard.tabPlan, Guard.tabHistory, Guard.rule, Guard.matchingNow, Guard.thisWeek, Guard.steps, Guard.protectedNow, Guard.mayQuitList, Guard.neverCloseList, Guard.wouldHave, Guard.theRule, Guard.stateActing, Guard.stateWatching, Guard.stateOff, Guard.stateCantRun, Guard.nothingToReport,
                  Guard.nothingHere, Guard.eventGone, Guard.whatHappened, Guard.theProgram, Guard.whyTheGuardDoesThis,

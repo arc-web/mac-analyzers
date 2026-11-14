@@ -274,6 +274,10 @@ if args.first == "--probe-channels" {
 if args.first == "--probe-versions" {
     await probeVersions()
 }
+// `--probe-whats-new [--changelog <file>]` prints how What's New reads a changelog; `--probe-whats-new-fixture`
+// judges the parser on stand-in releases (WhatsNewProbe.swift).
+if args.first == "--probe-whats-new" { probeWhatsNew(args) }
+if args.first == "--probe-whats-new-fixture" { probeWhatsNewFixture() }
 if args.first == "--probe-guard-rules" {
     probeGuardRules()
 }

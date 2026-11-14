@@ -7,6 +7,8 @@ import ProKit
 
 /// What can be pushed from the app's own screens.
 enum AppRoute: Hashable, Codable, Sendable {
+    /// One feature of What's New on its own screen, by its id (the release's version and its position in it).
+    case whatsNew(String)
     /// One How It Works topic.
     case topic(HowItWorksTopic)
 }
@@ -42,8 +44,12 @@ enum AppGroup {
             "about": .main(Location(howItWorks)),
             "howItWorks": .main(Location(howItWorks)),
             "support": .main(Location(support)),
+            // the What's New list: scrolls to it, or also narrows it to the newest release
+            "updates:whatsNew": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew")),
+            "updates:whatsNew:latest": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew:latest")),
         ],
         resolveDynamic: { target in
+            if let link = whatsNewLink(target) { return link }
             // `howItWorks:<topic>`: How It Works with that topic's screen on top
             if let topic = HowItWorksTopic.parse(target) { return .main(Location(howItWorks, path: [.app(.topic(topic))])) }
             // `howItWorks:memory|storage|system|yourData`: the screen on that tab (a link only selects and navigates)
@@ -54,6 +60,15 @@ enum AppGroup {
             return nil
         },
         load: nil)
+
+    /// `updates:whatsNew:<version>`: the first feature of that release on its own screen.
+    private static func whatsNewLink(_ target: String) -> Resolution? {
+        let prefix = "updates:whatsNew:"
+        guard target.hasPrefix(prefix) else { return nil }
+        let version = String(target.dropFirst(prefix.count))
+        guard !version.isEmpty else { return nil }
+        return .main(Location(updates, path: [.app(.whatsNew("\(version)#0"))]))
+    }
 
     private static var rows: [SidebarRow] {
         var rows = [
@@ -83,6 +98,7 @@ enum AppGroup {
 
     @ViewBuilder static func destination(for route: AppRoute) -> some View {
         switch route {
+        case .whatsNew(let id): WhatsNewDetailScreen(id: id)
         case .topic(let topic): TopicScreen(topic: topic)
         }
     }
