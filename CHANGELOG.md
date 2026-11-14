@@ -30,7 +30,7 @@ is two bullets. The release date is added when the release is cut.
 
 **A welcome when you first open Mac Analyzers**
 
-- On a new install Mac Analyzers now opens a short Welcome window. It shows what it will do on your Mac with your own numbers, turns on the background protection, previews what Memory Guard would do right now, and walks you through notifications and Full Disk Access, with Not Now on every step. After an update, anything new that needs setting up is marked on Setup, without a window taking over your screen. Continue Setup… on the Setup screen picks up where you left off, and Show Welcome Again… in the Help menu starts it over. <!-- wn: open=setup icon=hand.wave title="A Welcome on First Launch" -->
+- On a new install Mac Analyzers now opens a short Welcome window. It shows what it will do on your Mac with your own numbers, turns on the background protection, shows the Memory Guard plan against what is running right now (the steps, what each would pick, and what is protected), and walks you through notifications and Full Disk Access, with Not Now on every step. After an update, anything new that needs setting up is marked on Setup, without a window taking over your screen. Continue Setup… on the Setup screen picks up where you left off, and Show Welcome Again… in the Help menu starts it over. <!-- wn: open=setup icon=hand.wave title="A Welcome on First Launch" -->
 
 **Memory Guard**
 

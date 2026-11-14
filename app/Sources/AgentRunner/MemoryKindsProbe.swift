@@ -101,10 +101,11 @@ import Foundation
     fresh.end()
 
     // rates
-    var earlier = latest
-    earlier = sample(latest, at: latest.date.addingTimeInterval(-2), swapOuts: latest.swapOuts &- 100, swapIns: latest.swapIns &- 40)
-    check("a swap rate is pages per second times the page size", abs(latest.swapOutRate(since: earlier) - 100 * Double(latest.pageSize) / 2) < 1,
-          MemoryKindReport.rateText(latest.swapOutRate(since: earlier)))
+    // fixed counters, not this Mac's: right after a restart its swap counters are 0, and 0 minus 100 wraps round
+    let later = sample(latest, at: latest.date, swapOuts: 1_000, swapIns: 400)
+    let earlier = sample(latest, at: latest.date.addingTimeInterval(-2), swapOuts: 900, swapIns: 360)
+    check("a swap rate is pages per second times the page size", abs(later.swapOutRate(since: earlier) - 100 * Double(later.pageSize) / 2) < 1,
+          MemoryKindReport.rateText(later.swapOutRate(since: earlier)))
     let backwards = sample(latest, at: latest.date.addingTimeInterval(-2), swapOuts: latest.swapOuts + 5)
     check("a counter that went backwards gives zero, never a negative rate", latest.swapOutRate(since: backwards) == 0, "0")
 

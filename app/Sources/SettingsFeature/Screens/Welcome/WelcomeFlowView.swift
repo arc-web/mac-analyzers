@@ -47,6 +47,8 @@ public struct WelcomeFlowView: View {
         }
         // a window sized to its content needs a definite size: one for every step, so it does not jump as the steps change
         .frame(width: 560, height: 680)
+        // the title bar names the window (a flow after an update says it is New in This Version)
+        .navigationTitle(model.plan?.title ?? Names.Welcome.windowTitle)
         .task {
             model.fixture = fixture
             actions.isFixture = fixture != nil

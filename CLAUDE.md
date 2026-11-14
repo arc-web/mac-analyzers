@@ -154,6 +154,12 @@ through `config.local.sh` (never hardcoded).
   `ANALYZERS_RECORDING_SOURCES` and refuses the folders the Sources window refuses: a source must
   be inside the home folder (not the Library or a hidden folder) or on `/Volumes/<disk>/…`, checked on the path
   as written AND where it really leads (`RecordingFolderRule`; `rec_refusal` in `cleanup.sh`).
+- **How It Works and help.** `Screens/App/HowItWorks/` is one explainer (four tabs, a topic screen each, deep link `howItWorks:<topic>`),
+  written from this Mac's own readings (`HowItWorksFacts`: config through `ConfigStore`, the installed schedule through `ScheduleKit`);
+  a topic never quotes a figure it did not read and never promises "preview first" for a job the installed schedule applies by itself
+  (`--apply` in the plist). A screen names its topic with `.helpTopic(_, screen:)` (`Shared/HelpTopic.swift`): that always fills Help ›
+  "How <Screen> Works" (through `focusedSceneValue`, as `AppCommands` reads it) and, unless `button: false`, adds the toolbar "?" —
+  which a screen with a full toolbar (the Storage review screens) leaves out.
 - The **Welcome flow** is its own `Window` scene (`id: "welcome"`, `Screens/Welcome/`), opened through the open-window signal like the main
   window (`SettingsOpener.open(target: "welcome")`, deep link `welcome`; `WelcomeRequest.open(.automatic|.continuing|.again)` says why).
   WHEN it opens by itself is `WelcomePlanner` (`AnalyzersKit/Setup/WelcomeStep.swift`): a new install (no `~/mac-analyzers/setup-state.json`,

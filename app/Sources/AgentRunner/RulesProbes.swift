@@ -328,6 +328,18 @@ func probeRulesFixture(_ args: [String]) -> Never {
         let row = later.outcomes.first { $0.rule == "macos.limit" }
         return row?.action == "notify" && row?.category == "system" }())
 
+    // a read-only look (the Plan tab, the Welcome window) must not use up the day's keys: the watcher's look still writes the row
+    do {
+        var fresh = RulesState()
+        let readOnly = fresh.look(rules: rules, groups: groups, facts: facts(0, front: ["frontapp"]), write: false)
+        let writing = fresh.look(rules: rules, groups: groups, facts: facts(60, front: ["frontapp"]), write: true)
+        check("a read-only look discards its rows but the watcher's look 60 s later still produces them",
+              !readOnly.outcomes.isEmpty && writing.outcomes.count == readOnly.outcomes.count,
+              "read-only \(readOnly.outcomes.count) rows, write \(writing.outcomes.count) rows")
+        check("and once that look has written, the same look again writes nothing new",
+              fresh.look(rules: rules, groups: groups, facts: facts(70, front: ["frontapp"]), write: true).outcomes.isEmpty)
+    }
+
     // the ladder, when memory has run out
     var state2 = RulesState()
     let calm = RuleEvaluator.evaluate(rules: rules, groups: groups, facts: facts(0), state: &state2)

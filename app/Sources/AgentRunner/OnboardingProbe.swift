@@ -159,6 +159,9 @@ func probeOnboarding(state: String?) -> Never {
           WelcomePlanner.markWhatsNewSeen(version: "2.72.0", defaults: defaults) && defaults.string(forKey: "whatsNew.seenVersion") == "2.72.0"
           && !WelcomePlanner.markWhatsNewSeen(version: "2.73.0", defaults: defaults) && defaults.string(forKey: "whatsNew.seenVersion") == "2.72.0")
 
+    // the Memory Guard step keeps "only watches" true, in the words the Plan tab uses
+    check("the guard step and the Plan tab share the one note that says it only watches",
+          GuardPlanPreview.watchingNote.contains("only watching") && WelcomeGuardFixture.plan.note == GuardPlanPreview.watchingNote)
     print(failures == 0 ? "\nPASS  every check holds" : "\n\(failures) checks FAILED")
     ProbeScratch.finish(failures == 0 ? 0 : 1)
 }

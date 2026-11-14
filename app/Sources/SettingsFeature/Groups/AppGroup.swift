@@ -9,6 +9,8 @@ import ProKit
 enum AppRoute: Hashable, Codable, Sendable {
     /// One feature of What's New on its own screen, by its id (the release's version and its position in it).
     case whatsNew(String)
+    /// One How It Works topic.
+    case topic(HowItWorksTopic)
 }
 
 /// Whether a newer release exists, for the Updates row's badge: read from the app's one
@@ -40,12 +42,23 @@ enum AppGroup {
         aliases: [
             "update": .main(Location(updates)),
             "about": .main(Location(howItWorks)),
+            "howItWorks": .main(Location(howItWorks)),
             "support": .main(Location(support)),
             // the What's New list: scrolls to it, or also narrows it to the newest release
             "updates:whatsNew": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew")),
             "updates:whatsNew:latest": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew:latest")),
         ],
-        resolveDynamic: whatsNewLink,
+        resolveDynamic: { target in
+            if let link = whatsNewLink(target) { return link }
+            // `howItWorks:<topic>`: How It Works with that topic's screen on top
+            if let topic = HowItWorksTopic.parse(target) { return .main(Location(howItWorks, path: [.app(.topic(topic))])) }
+            // `howItWorks:memory|storage|system|yourData`: the screen on that tab (a link only selects and navigates)
+            if target.hasPrefix("howItWorks:"), let tab = HowItWorksTab(rawValue: String(target.dropFirst("howItWorks:".count))) {
+                ScopeTabMemory.select(tab.rawValue, in: "howItWorks")
+                return .main(Location(howItWorks))
+            }
+            return nil
+        },
         load: nil)
 
     /// `updates:whatsNew:<version>`: the first feature of that release on its own screen.
@@ -72,7 +85,7 @@ enum AppGroup {
     @ViewBuilder private static func screen(_ section: SectionID) -> some View {
         switch section {
         case updates: UpdateSettingsView()
-        case howItWorks: AboutSettingsView()
+        case howItWorks: HowItWorksView()
         case support:
             #if canImport(ProKit)
             ProLicenseScreen()
@@ -86,6 +99,7 @@ enum AppGroup {
     @ViewBuilder static func destination(for route: AppRoute) -> some View {
         switch route {
         case .whatsNew(let id): WhatsNewDetailScreen(id: id)
+        case .topic(let topic): TopicScreen(topic: topic)
         }
     }
 }

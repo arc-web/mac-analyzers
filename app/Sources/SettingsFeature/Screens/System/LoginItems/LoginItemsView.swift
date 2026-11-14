@@ -84,6 +84,7 @@ struct LoginItemsView: View {
 
     var body: some View {
         DataScreen(title: Names.Screen.loginItems, subtitle: subtitle) { content }
+            .helpTopic(.loginItems, screen: Names.Screen.loginItems)
             .scopeTabsToolbar(screen: "loginItems", items: tabItems, selection: $tab)
             .searchable(text: $query, prompt: tab == .changes ? "Search changes" : "Search startup items")
             .toolbar { toolbar }

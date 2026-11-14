@@ -12,6 +12,7 @@ struct ScheduleSettingsView: View {
     @State private var deepDays = 3
     @State private var status: String?
     @State private var applying = false
+    private var facts: HowItWorksFacts? { HowItWorksModel.shared.facts }
 
     private static let memoryLabel = "com.mac-analyzers.memory-autoclean.daily"
     private static let storageLabel = "com.mac-analyzers.storage-autoclean.daily"
@@ -27,7 +28,7 @@ struct ScheduleSettingsView: View {
                                    displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
-                    Text("Closes dev/AI servers whose session already ended, and stale headless browsers, once a day.")
+                    Text(facts?.jobCaption(Self.memoryLabel) ?? Names.Setup.jobWhy(Self.memoryLabel))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -37,7 +38,7 @@ struct ScheduleSettingsView: View {
                                    displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
-                    Text("Removes stale build caches only. Keep the two dailies offset so they never contend.")
+                    Text((facts?.jobCaption(Self.storageLabel) ?? Names.Setup.jobWhy(Self.storageLabel)) + " Keep the two dailies offset so they never contend.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -49,7 +50,7 @@ struct ScheduleSettingsView: View {
                         Stepper("every \(deepDays) day\(deepDays == 1 ? "" : "s")",
                                 value: $deepDays, in: 1...14)
                     }
-                    Text("Adds downloaded code for projects you haven't touched lately (node_modules), Docker prune, and deleting Time Machine local snapshots. Measured from load or the last run.")
+                    Text((facts?.jobCaption(Self.deepLabel) ?? Names.Setup.jobWhy(Self.deepLabel)) + " Measured from load or the last run.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -57,7 +58,7 @@ struct ScheduleSettingsView: View {
 
             Section("Always On") {
                 LabeledContent("Memory Guard") {
-                    Label("Runs continuously — checks every 15 s while the Mac is awake",
+                    Label("Runs continuously — checks \(facts?.guardEvery ?? "regularly") while the Mac is awake",
                           systemImage: "shield.lefthalf.filled")
                         .foregroundStyle(.secondary)
                 }
@@ -83,6 +84,7 @@ struct ScheduleSettingsView: View {
             }
         }
         .onAppear(perform: load)
+        .task { await HowItWorksModel.shared.load() }
     }
 
     // MARK: - plumbing

@@ -15,7 +15,7 @@ struct WelcomeIntroStep: View {
                         "It is watched all the time, and an app that takes too much is flagged.")
                     row("internaldrive", "Storage",
                         "\(ByteSize.text(numbers.diskTotal, .headline)) disk, \(ByteSize.text(numbers.diskUsed, .headline)) used, \(ByteSize.text(numbers.diskFree, .headline)) free",
-                        "Caches, old downloads and leftovers are listed for you to review before anything is moved.")
+                        "Caches, old downloads and leftovers are listed for you to review before a cleanup you start is applied. The background cleanups you turn on next run by themselves: \(Names.Group.settings) › \(Names.Screen.schedule) changes when, and \(Names.Screen.setup) › \(Names.Screen.turnOff) switches them all off.")
                     row("person.crop.circle.badge.questionmark", "Start-up",
                         numbers.startupItems.map { "\($0) things start by themselves" } ?? "Everything that starts by itself, listed",
                         "Login items, launch agents and background helpers, with what is left behind by apps you removed.")
@@ -69,41 +69,49 @@ struct WelcomeBackgroundStep: View {
     private var loginEvidence: String { model.item("login")?.evidence ?? "" }
 }
 
-/// Step 3: what Memory Guard would do on this Mac right now, by the Monitor's categories.
+/// Step 3: the plan of "When Memory Runs Out" as the Memory Guard Plan tab shows it: the steps in the order they are tried, each
+/// with what it would pick on this Mac right now and whether it is Watching or Acting, and what is protected right now.
 struct WelcomeGuardStep: View {
-    let preview: GuardPreview?
+    let preview: GuardPlanPreview.Plan?
 
     var body: some View {
         if let preview {
             Form {
-                ForEach(preview.sections) { section in
-                    Section(section.title) {
-                        ForEach(section.rows) { row in
+                Section {
+                    Text(preview.ladder)
+                    Text(preview.note).font(.callout).foregroundStyle(.secondary)
+                }
+                Section(Names.Guard.steps) {
+                    ForEach(preview.steps) { step in
+                        LabeledContent {
+                            Text(step.state.title).font(.caption.weight(.semibold)).foregroundStyle(color(step.state))
+                        } label: {
                             VStack(alignment: .leading, spacing: Tokens.Space.xs) {
-                                HStack {
-                                    Text(row.kind).font(.callout.weight(.medium))
-                                    Text("\(row.count) · \(ByteSize.text(row.bytes, .headline))").font(.caption).foregroundStyle(.secondary)
-                                    Spacer()
-                                    if row.wouldStop {
-                                        Text("Would stop").font(.caption.weight(.medium)).foregroundStyle(Tokens.Status.caution.tint)
-                                    }
-                                }
-                                Text(row.guardMay).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                Text(step.summary)
+                                Text(step.wouldPick).font(.caption).foregroundStyle(.secondary)
                             }
-                            .padding(.vertical, Tokens.Space.xs)
                         }
                     }
                 }
-                if !preview.wouldStop.isEmpty {
-                    Section {
-                        Text("Over your limit of \(ByteSize.text(preview.limitBytes, .headline)) right now: \(Names.Setup.list(preview.wouldStop.map(\.kind))). Today the guard only watches, so nothing is stopped for you.")
-                            .font(.callout)
+                Section {
+                    ForEach(preview.protected, id: \.self) { item in
+                        LabeledContent { Text(item.why).foregroundStyle(.secondary) } label: { Label(item.name, systemImage: item.symbol) }
                     }
-                }
+                    if preview.protected.isEmpty { Text("Nothing running is protected by name right now.").foregroundStyle(.secondary) }
+                } header: { Text(Names.Guard.protectedNow) }
             }
             .formStyle(.grouped)
         } else {
             LoadingState("Looking at what is running…")
+        }
+    }
+
+    private func color(_ state: RuleState) -> Color {
+        switch state {
+        case .acting: .green
+        case .watching: .blue
+        case .off: .secondary
+        case .cantRun: .orange
         }
     }
 }

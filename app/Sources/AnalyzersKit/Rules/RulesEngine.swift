@@ -20,8 +20,9 @@ public actor RulesEngine {
     private var watching = false
     private var seeded = false
 
-    /// One look at the real process table. With `write`, the would-have rows are added to the file; without it (the screen
-    /// asking what matches now) nothing is written.
+    /// One look at the real process table. With `write`, the would-have rows are added to the file; without it (a screen
+    /// asking what matches now) no file is written AND the once-a-day keys stay as they were, so the watcher's next look still
+    /// writes the day's row. The time a unit has been over its limit is still updated: that is what was observed.
     public func look(frontApps: Set<String> = [], write: Bool) -> RulesLook {
         if write, !seeded {
             // a relaunch does not write the day's rows again: what today's file holds counts as written
@@ -30,7 +31,7 @@ public actor RulesEngine {
         }
         let rules = GuardRules.load()
         let groups = MemoryCensus.take().groups
-        let result = RuleEvaluator.evaluate(rules: rules, groups: groups, facts: .live(frontApps: frontApps), state: &state)
+        let result = state.look(rules: rules, groups: groups, facts: .live(frontApps: frontApps), write: write)
         if write { RuleOutcomes.append(result.outcomes) }
         return RulesLook(rules: rules, evaluation: result, groups: groups)
     }
@@ -48,6 +49,18 @@ public actor RulesEngine {
                 try? await Task.sleep(for: .seconds(60))
             }
         }
+    }
+}
+
+public extension RulesState {
+    /// One evaluation on this state. `evaluate` marks every row it returns as written for the day, so a look whose rows are
+    /// discarded (`write` false) puts those keys back: the watcher's next look must still produce the day's row. The time a
+    /// unit has been over its limit stays updated, since that was observed.
+    mutating func look(rules: GuardRules, groups: [CensusGroup], facts: RuleFacts, write: Bool) -> RuleEvaluation {
+        let before = written
+        let result = RuleEvaluator.evaluate(rules: rules, groups: groups, facts: facts, state: &self)
+        if !write { written = before }
+        return result
     }
 }
 
