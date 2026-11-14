@@ -1,4 +1,5 @@
 import AnalyzersKit
+import AppKit
 import Foundation
 import ServiceManagement
 import SwiftUI
@@ -10,7 +11,7 @@ final class WelcomeModel {
 
     private(set) var setup: SetupInputs?
     private(set) var numbers: WelcomeNumbers?
-    private(set) var preview: GuardPreview?
+    private(set) var preview: GuardPlanPreview.Plan?
     private(set) var plan: WelcomePlan?
     var index = 0
     private(set) var state = SetupState(seenVersion: WelcomePlanner.baseline)
@@ -68,7 +69,7 @@ final class WelcomeModel {
         let (setup, welcome) = SetupFixtures.welcome(fixtureState)
         self.setup = setup
         numbers = .fixture
-        preview = .fixture
+        preview = WelcomeGuardFixture.plan
         let chosen: WelcomePlan?
         switch fixtureState {
         case "upgraded": chosen = WelcomePlanner.autoPlan(welcome)
@@ -87,9 +88,10 @@ final class WelcomeModel {
     }
 
     private func loadPreviewIfNeeded() async {
-        guard fixture == nil, preview == nil, steps.contains(.guardPreview), let setup else { return }
-        let limit = setup.capMB
-        preview = await Task.detached(priority: .userInitiated) { GuardPreview.read(limitMB: limit) }.value
+        guard fixture == nil, preview == nil, steps.contains(.guardPreview) else { return }
+        // the same plan and evaluator the Memory Guard Plan tab reads, looked at without writing anything down
+        let look = await RulesEngine.shared.look(frontApps: RulesEngine.frontAppNames(), write: false)
+        preview = GuardPlanPreview.Plan(look: look, front: NSWorkspace.shared.frontmostApplication?.localizedName)
     }
 
     // MARK: - moving

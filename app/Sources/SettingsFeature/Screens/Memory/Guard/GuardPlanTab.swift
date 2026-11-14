@@ -15,8 +15,7 @@ struct GuardPlanTab: View {
             Form {
                 Section {
                     Text(GuardRule.ladderSentence(model.rules.steps.filter { $0.state != .off }.map(\.rule)))
-                    Text("Memory Guard is only watching in this version: a step marked Watching records what it would have done and stops nothing. "
-                         + "The dev-tooling steps marked Acting are the ones the guard script already carries out.")
+                    Text(GuardPlanPreview.watchingNote)
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 if let notice = model.notice { Section { Label(notice, systemImage: "exclamationmark.triangle").foregroundStyle(.orange) } }
@@ -75,13 +74,7 @@ struct GuardPlanTab: View {
         }
     }
 
-    private func wouldPick(_ pick: StepPick?, _ step: ResolvedRule) -> String {
-        if case .cantRun(let why) = step.state { return "Can't run: \(why)." }
-        if step.state == .off { return "Off." }
-        if let note = pick?.note { return note }
-        if let match = pick?.match { return "Would pick now: \(match.unit.name), \(MemorySize.text(match.unit.bytes)) (\(match.kind.name))." }
-        return "Would pick now: nothing."
-    }
+    private func wouldPick(_ pick: StepPick?, _ step: ResolvedRule) -> String { GuardPlanPreview.wouldPick(pick, step) }
 
     private func color(_ state: RuleState) -> Color {
         switch state {
@@ -92,21 +85,10 @@ struct GuardPlanTab: View {
         }
     }
 
-    /// What nothing may touch right now, from what is running.
+    /// What nothing may touch right now, from what is running (the same reading the Welcome flow's Memory Guard step uses).
     private var protectedNow: [(name: String, why: String, symbol: String)] {
-        var found: [(String, String, String)] = []
-        let rules = model.rules
-        for group in model.groups {
-            if rules.protected.kinds.contains(group.kind.id) {
-                found.append((group.name, group.kind == model.rules.catalog.kind(id: "tools.codingAgents") ? "a live coding session" : group.kind.name, "lock.fill"))
-            } else if rules.protected.names.contains(group.name.lowercased()) {
-                found.append((group.name, "never touched", "lock.fill"))
-            }
-        }
-        if let front = NSWorkspace.shared.frontmostApplication?.localizedName { found.append((front, "the app in front", "macwindow")) }
-        for name in rules.local.neverClose { found.append((name, "on your Never Close list", "hand.raised.fill")) }
-        var seen = Set<String>()
-        return found.filter { seen.insert($0.0.lowercased() + $0.1).inserted }.prefix(24).map { $0 }
+        GuardPlanPreview.protectedNow(rules: model.rules, groups: model.groups, front: NSWorkspace.shared.frontmostApplication?.localizedName)
+            .map { ($0.name, $0.why, $0.symbol) }
     }
 
     @ViewBuilder private func list(_ kind: Names.GuardList, _ title: String, _ footer: String, choices: [String]) -> some View {
