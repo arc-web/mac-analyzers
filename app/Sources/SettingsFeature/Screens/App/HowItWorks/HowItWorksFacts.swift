@@ -47,7 +47,9 @@ struct HowItWorksFacts: Sendable {
     var guardIntervalSeconds = 15
     var devSweepSeconds = 120
     var worktreeIdleDays = 0
-    var toolCacheCount = 0
+    var toolCaches: [String] = []
+    /// A bash newer than the 3.2 macOS ships, where `memory-auto-clean.sh` can run the parts that need one (it looks in these two places).
+    var newerBashInstalled = false
     var tempIdleHours = 24
     var tempAgentScratchDays = 3
     var tempToolDownloadDays = 14
@@ -98,6 +100,7 @@ struct HowItWorksFacts: Sendable {
     /// "every 15 seconds", "every second".
     var guardEvery: String { guardIntervalSeconds == 1 ? "every second" : "every \(guardIntervalSeconds) seconds" }
 
+    /// A job that is installed but has no schedule runs only when something starts it.
     func notScheduled(_ label: String) -> String {
         "\(schedule(label)?.name ?? label) is not scheduled on this Mac."
     }
@@ -125,7 +128,8 @@ final class HowItWorksModel {
         f.guardIntervalSeconds = config.memory.guardIntervalSeconds
         f.devSweepSeconds = config.memory.devSweepSeconds
         f.worktreeIdleDays = config.storage.worktreeIdleDays
-        f.toolCacheCount = config.storage.toolCaches.count
+        f.toolCaches = config.storage.toolCaches
+        f.newerBashInstalled = ["/opt/homebrew/bin/bash", "/usr/local/bin/bash"].contains { FileManager.default.isExecutableFile(atPath: $0) }
         f.tempIdleHours = config.storage.tempIdleHours
         f.tempAgentScratchDays = config.storage.tempAgentScratchDays
         f.tempToolDownloadDays = config.storage.tempToolDownloadDays
@@ -142,7 +146,8 @@ final class HowItWorksModel {
             let installed = ScheduleKit.isInstalled(job.label)
             return HowItWorksFacts.ScheduleLine(
                 label: job.label, name: Names.Setup.jobTitle(job.label), installed: installed,
-                when: installed ? ScheduleKit.describe(job.label) : nil,
+                // a plist with no schedule key never runs by itself: it has no time to quote
+                when: installed && ScheduleKit.schedule(for: job.label) != nil ? ScheduleKit.describe(job.label) : nil,
                 arguments: ScheduleKit.programArguments(for: job.label) ?? [])
         }
         f.channel = UpdateChannel.saved

@@ -19,7 +19,7 @@ extension HowItWorksTopic {
             does.append("When you start a cleanup yourself it is a preview first: you see what would be removed and untick anything you want kept, and only then does Apply start. Caches and build folders are deleted for good, because your tools make them again, so Undo cannot bring them back.")
             does.append("The cleanups that run by themselves do not wait for you. \(scheduledDaily)")
             does.append(scheduledDeep)
-            does.append("\(Names.Screen.schedule) in \(Names.Group.settings) changes when they run, or switches them off.")
+            does.append("Change when they run in \(Names.Group.settings) › \(Names.Screen.schedule). The background jobs are switched off only all together, in \(Names.Screen.setup) › \(Names.Screen.turnOff).")
             if f.logsRead { does.append("In the last 7 days, \(f.week.cleanRuns) cleanups freed \(ByteSize.text(f.week.storageFreedBytes, .headline)).") }
             var summary = [f.freeDisk.flatMap { free in f.totalDisk.map { "\(free) free of \($0)." } }].compactMap { $0 }.joined()
             if f.logsRead { summary += (summary.isEmpty ? "" : " ") + "\(f.week.cleanRuns) cleanups this week." }
@@ -51,7 +51,7 @@ extension HowItWorksTopic {
         case .timeMachine:
             let deep = GuardControl.storageDeepLabel
             var byItself = ""
-            if let line = f.schedule(deep), line.installed, line.has("--prune-snapshots"), let when = line.when {
+            if let line = f.schedule(deep), line.installed, line.thinsSnapshots, let when = line.when {
                 byItself = f.timeMachinePermission
                     ? "Because you have given the permission, \(line.name) deletes local snapshots by itself \(when.lowercased()), without asking."
                     : "\(line.name) runs \(when.lowercased()) and would delete local snapshots, but it skips them until you give the permission."

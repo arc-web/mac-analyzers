@@ -46,7 +46,9 @@ extension HowItWorksTopic {
                     pressure,
                     "A sudden jump (a program growing by \(f.megabytes(f.spikeMB)) since the last check while using more than \(f.megabytes(f.spikeMinMB))) and a program using more than \(f.cpuHogPercent) percent of a processor for \(f.cpuHogChecks) checks in a row only ever notify you. Nothing is stopped for either.",
                     kinds,
-                    f.devSweepSeconds > 0
+                    f.devSweepSeconds > 0 && !f.newerBashInstalled
+                        ? "Memory Guard can also start a quieter pass of the memory cleaner every \(f.devSweepSeconds) seconds that stops idle developer tools, unused development servers, emulators and simulators, and build daemons. It needs a bash newer than the one macOS ships, and none is installed on this Mac, so it does nothing here."
+                        : f.devSweepSeconds > 0
                         ? "Separately, while Memory Guard runs it starts a quieter pass of the memory cleaner every \(f.devSweepSeconds) seconds, and that pass applies without a preview: it stops developer tools whose parent is gone once they sit idle, development servers nobody is using, emulators and simulators nobody is using, and Gradle and Kotlin build daemons while no build runs. It never touches apps, protected programs or a live coding session."
                         : "Memory Guard does not run the quieter pass of the memory cleaner that stops idle developer tools, because you have set its interval to 0.",
                     "Rules for other kinds of program are only being watched: Memory Guard shows what they would have done and stops nothing for them.",
@@ -90,7 +92,7 @@ extension HowItWorksTopic {
                 does: [
                     scheduled,
                     "When you start \(Names.Screen.memoryCleanup) yourself from its screen, it always shows a preview first, and nothing is closed until you review the preview and apply it. \(alsoQuit)",
-                    "\(Names.Screen.schedule) in \(Names.Group.settings) changes when the scheduled run happens, or switches it off.",
+                    "Change when the scheduled run happens in \(Names.Group.settings) › \(Names.Screen.schedule). The background jobs are switched off only all together, in \(Names.Screen.setup) › \(Names.Screen.turnOff).",
                 ],
                 never: ["A run you start yourself never closes anything you did not see in a preview, and no run touches your protected programs."],
                 written: ["Each run writes a full report (see \(Names.HowItWorks.whereWritten)) and appears in Activity."],
