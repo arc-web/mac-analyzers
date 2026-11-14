@@ -107,7 +107,7 @@ bullet_records() {
       if (!inb) return
       n = 0; rest = text
       while ((k = index(rest, "<!-- wn:")) > 0) { n++; rest = substr(rest, k + 8) }
-      ends = (n == 1 && text ~ /<!-- wn:.*-->[ \t]*$/ && lastline ~ /<!-- wn:/) ? 1 : 0
+      ends = (n == 1 && text ~ /<!-- wn:([^-]|-[^-]|--[^>])*-->[ \t]*$/ && lastline ~ /<!-- wn:/) ? 1 : 0
       tag = ""; body = text
       if (n >= 1) { k = index(text, "<!-- wn:"); tag = substr(text, k + 8); sub(/-->.*$/, "", tag); body = substr(text, 1, k - 1); sub(/[ \t]+$/, "", body) }
       t = field(tag, "title"); if (t == "") t = summary(body)
@@ -204,6 +204,9 @@ fi
 
 # ── the tags ───────────────────────────────────────────────────────────────
 if version_at_least "$version" "$WN_FIRST"; then
+  if [[ -z "$(bullet_records)" ]]; then
+    fail "the entry has no bullets — from $WN_FIRST on, What's New lists each change as a row, so write each change as a bullet that ends with its tag (<!-- wn: open=… icon=… -->); a fix is a bullet too"
+  fi
   while IFS=$'\037' read -r at tag_count at_end open icon tag_title _; do
     [[ -n "$at" ]] || continue
     if (( tag_count == 0 )); then fail "the bullet at line $at of the entry has no What's New tag (<!-- wn: open=… icon=… -->)"; continue; fi

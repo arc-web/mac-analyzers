@@ -52,9 +52,11 @@ final class WelcomeModel {
         state = saved ?? SetupState(seenVersion: version)
         // the flow has been shown: an update is not shown the same steps again, and a new install's What's New card is not
         // needed (the version it came with is the one it is already running)
+        // the What's New mark goes first: saving the record is what makes this Mac look like an existing install to anyone
+        // who asks (WhatsNewSeen.migrate), and a new install must already have its mark by then
+        if plan.reason == .firstLaunch, mode == .automatic { WelcomePlanner.markWhatsNewSeen(version: version) }
         state.seenVersion = WelcomePlanner.stampVersion(current: version)
         state.save()
-        if plan.reason == .firstLaunch, mode == .automatic { WelcomePlanner.markWhatsNewSeen(version: version) }
         await loadPreviewIfNeeded()
     }
 

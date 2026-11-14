@@ -3,6 +3,7 @@ import AnalyzersKit
 
 /// The newest release the person has seen What's New for: what decides the sidebar card and the "New" mark on a
 /// row. One string in the defaults, the version, so the next release brings the card back once.
+@MainActor
 enum WhatsNewSeen {
     static let key = "whatsNew.seenVersion"
     /// What the same fact was called before What's New had rows; read once and then forgotten.
@@ -24,8 +25,10 @@ enum WhatsNewSeen {
         let setup = await SetupInputs.read()
         // another caller may have written it while this one was reading
         guard defaults.string(forKey: key) == nil else { return }
-        let existing = SetupState.load() != nil || setup.settingsFileExists || setup.jobs.contains(where: \.loaded)
-        let before = existing ? releaseBefore(installed) : nil
+        // the Welcome flow's own test of a new install, not a second copy of it
+        let inputs = WelcomeSatisfaction.inputs(setup: setup, state: SetupState.load(), hasTimeMachine: false,
+                                                version: installed, neverOpen: false)
+        let before = WelcomePlanner.isFreshInstall(inputs) ? nil : releaseBefore(installed)
         defaults.set(before ?? installed, forKey: key)
     }
 

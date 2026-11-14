@@ -57,6 +57,12 @@ entry '<!-- wn: open=guard icon=shield title="Stop > Quit" -->' "$good2" > "$wor
   grep -q 'contains a ">"' "$work/out" && echo "  ok   and says why" || { echo "  FAIL the > message"; failures=$((failures + 1)); }
 # a tag in the middle of a bullet: the comment, then more words on the last line
 sed 's/Guard Events as Rows" -->/Guard Events as Rows" --> and more words/' "$work/good.md" > "$work/mid.md"; expect fail "a tag that is not at the end fails" "$work/mid.md"
+# a comment after the tag must not hide words from --print: the tag has to END the bullet
+sed 's/Guard Events as Rows" -->/Guard Events as Rows" --> and more words <!-- keep -->/' "$work/good.md" > "$work/trail.md"; expect fail "a tag followed by words and another comment fails" "$work/trail.md"
+# from the first tagged version an entry with no bullet at all is refused, and says what to do
+awk '/^- /{skip=1} /^$/{skip=0} !skip' "$work/good.md" > "$work/prose.md"
+expect fail "an entry with no bullets fails" "$work/prose.md"
+grep -q 'write each change as a bullet' "$work/out" && echo "  ok   and says to make it a tagged bullet" || { echo "  FAIL the no-bullets message"; failures=$((failures + 1)); }
 # prose rules still judge the prose: a code name is refused, a screen name inside a tag is not
 sed 's/The window remembers/The window remembers a setting_name/' "$work/good.md" > "$work/code.md"; expect fail "code names in the prose still fail" "$work/code.md"
 # an older entry is never re-judged
