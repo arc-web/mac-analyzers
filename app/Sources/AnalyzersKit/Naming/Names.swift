@@ -731,6 +731,8 @@ public enum Names {
         public static let notYetReleased = "Not yet released"
         public static let notInTheseNotes = "It is not in the release notes this copy carries."
         public static let opensThisFeature = "Opens this feature"
+        /// "Notes for v2.71.0": the row under the "Other Notes" group; the unreleased section has no version.
+        public static func notesFor(_ version: String?) -> String { version.map { "Notes for v\($0)" } ?? "Notes for This Build" }
         public static func earlierFeatures(_ count: Int) -> String { "\(count) earlier features" }
         /// "7 new features": the sidebar card's one line about a release.
         public static func featureCount(_ count: Int) -> String { count == 1 ? "1 new feature" : "\(count) new features" }

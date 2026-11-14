@@ -88,7 +88,7 @@ public struct ReleaseNote: Identifiable, Sendable {
     public var notesItem: WhatsNewItem? {
         guard !closing.isEmpty else { return nil }
         return WhatsNewItem(id: "\(version ?? "next")#notes", version: version, released: released, releaseTitle: releaseTitle,
-                            summary: Names.WhatsNew.otherNotes, tagTitle: nil, body: closing.joined(separator: "\n\n"),
+                            summary: Names.WhatsNew.notesFor(version), tagTitle: nil, body: closing.joined(separator: "\n\n"),
                             scope: .untagged, symbol: "note.text", image: nil, topic: Names.WhatsNew.otherNotes, isNotes: true)
     }
 
