@@ -32,6 +32,10 @@ is two bullets. The release date is added when the release is cut.
 
 - On a new install Mac Analyzers now opens a short Welcome window. It shows what it will do on your Mac with your own numbers, turns on the background protection, shows the Memory Guard plan against what is running right now (the steps, what each would pick, and what is protected), and walks you through notifications and Full Disk Access, with Not Now on every step. After an update, anything new that needs setting up is marked on Setup, without a window taking over your screen. Continue Setup… on the Setup screen picks up where you left off, and Show Welcome Again… in the Help menu starts it over. <!-- wn: open=setup icon=hand.wave title="A Welcome on First Launch" -->
 
+**How It Works**
+
+- How It Works explains each part of Mac Analyzers with your Mac's own numbers, in four tabs: Memory, Storage, System and Your Data. Each topic says what it does, what it never does and where it writes things down, and it says plainly what each scheduled clean does by itself, without a preview. The Help menu names the topic for the screen you are on (for example How Memory Guard Works), and screens with room for it have a help button too. <!-- wn: open=howItWorks icon=questionmark.circle title="How It Works, with Your Numbers" -->
+
 **Memory Guard**
 
 - Memory Guard has tabs now, the same way Monitor has: When Memory Runs Out, Apps,
