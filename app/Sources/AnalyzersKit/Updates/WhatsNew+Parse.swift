@@ -25,19 +25,25 @@ extension ReleaseNote {
         let title = isNext ? unreleasedTitle : heading
         let version = isNext ? nil : heading.dropFirst().prefix { !$0.isWhitespace }.description
 
-        // the release date is the file's own bookkeeping: a whole-line tag before any text of the entry. A tag on a
-        // line of its own AFTER text belongs to the bullet above it (the tag may wrap onto its own line), so it stays
-        // in the prose for the bullet to read; a second date line there is dropped.
+        // the release date is the file's own bookkeeping: a whole-line date tag anywhere before the first bullet
+        // (directly under the heading or after the intro paragraph). A tag on a line of its own AFTER text belongs
+        // to the bullet above it (the tag may wrap onto its own line), so it stays in the prose for the bullet to
+        // read; a date line after the first bullet is dropped (changelog-check.sh refuses it before a release).
         var released: Date?
         var prose: [String] = []
         var seenText = false
+        var seenBullet = false
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if let tag = WhatsNewTag.read(trimmed), trimmed.hasPrefix("<!--") {
                 if !seenText { if let day = tag.released { released = day }; continue }
-                if tag.released != nil, tag.open == nil, tag.icon == nil { continue }
+                if tag.released != nil, tag.open == nil, tag.icon == nil {
+                    if !seenBullet, let day = tag.released { released = day }
+                    continue
+                }
             } else if !trimmed.isEmpty {
                 seenText = true
+                if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") { seenBullet = true }
             }
             prose.append(line)
         }

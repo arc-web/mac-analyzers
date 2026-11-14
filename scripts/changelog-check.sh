@@ -141,10 +141,13 @@ if [[ "$mode" == "stamp" ]]; then
   [[ "$stamp_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "changelog: --stamp needs a date like 2026-11-14." >&2; exit 2; }
   [[ -n "$heading" ]] || { echo "changelog: no entry for v$version to stamp." >&2; exit 1; }
   stamped="$(mktemp)"
+  # the new date goes directly under the heading; an old one anywhere before the entry's first bullet is replaced
   awk -v want="## v$version" -v day="$stamp_date" '
-    { if (skip_old && $0 ~ /^[ \t]*<!--[ \t]*wn:[ \t]*released=[^>]*-->[ \t]*$/) { skip_old = 0; next }
-      skip_old = 0; print }
-    index($0, want " ") == 1 || $0 == want { print "<!-- wn: released=" day " -->"; skip_old = 1 }' "$changelog" > "$stamped"
+    index($0, want " ") == 1 || $0 == want { print; print "<!-- wn: released=" day " -->"; inside = 1; next }
+    inside && /^## / { inside = 0 }
+    inside && /^[ \t]*[-*][ \t]+/ { inside = 0 }
+    inside && /^[ \t]*<!--[ \t]*wn:[ \t]*released=[^>]*-->[ \t]*$/ { next }
+    { print }' "$changelog" > "$stamped"
   if cmp -s "$stamped" "$changelog"; then rm -f "$stamped"; else cat "$stamped" > "$changelog"; rm -f "$stamped"; fi
   echo "changelog: v$version released $stamp_date"
   exit 0
@@ -220,6 +223,13 @@ if version_at_least "$version" "$WN_FIRST"; then
       (( ${#tag_title} <= 60 )) || fail "the tag title \"$tag_title\" is over 60 characters"
     fi
   done < <(bullet_records)
+fi
+# the release date line belongs above the first bullet: the app reads it only from there
+late_date="$(printf '%s\n' "$raw_body" | awk '
+  /^[ \t]*[-*][ \t]+/ { seen_bullet = 1 }
+  seen_bullet && /^[ \t]*<!--[ \t]*wn:[ \t]*released=[0-9]{4}-[0-9]{2}-[0-9]{2}[ \t]*-->[ \t]*$/ { print NR; exit }')"
+if [[ -n "$late_date" ]]; then
+  fail "the release date line (<!-- wn: released=… -->) at line $late_date of the entry comes after the first bullet — move it up under the heading or below the intro paragraph, before the first bullet, or the app shows no date"
 fi
 # a tag anywhere but the end of a bullet (the date line apart) is a mistake in any entry
 stray="$(printf '%s\n' "$raw_body" | awk '

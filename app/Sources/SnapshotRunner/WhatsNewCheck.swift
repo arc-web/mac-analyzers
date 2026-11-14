@@ -56,6 +56,12 @@ enum WhatsNewCheck {
             }
             if item.scope != .untagged { tagged += 1 }
         }
+        // a date line the file carries but the app did not read (after the first bullet) would show no date
+        if let version = note.version, note.released == nil,
+           let section = text.components(separatedBy: "\n## ").first(where: { $0.hasPrefix("v\(version) ") || $0.hasPrefix("v\(version)\n") }),
+           section.contains("<!-- wn: released=") {
+            failures.append("the release date line is not where the app reads it (before the first bullet), so What's New shows no date")
+        }
         for failure in failures { FileHandle.standardError.write(Data("  • \(failure)\n".utf8)) }
         if failures.isEmpty {
             print("changelog: \(note.items.count) bullet(s) of \(note.title.prefix(40)), \(tagged) tagged — every screen, icon and title checks out in this app")

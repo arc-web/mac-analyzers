@@ -114,5 +114,15 @@ onmac pass "that tag still belongs to its bullet in the app" "$work/ownline.md"
 entry "" "$good2" > "$work/untagged-app.md"
 onmac fail "a bullet with no tag fails the app's reading" "$work/untagged-app.md"
 
+# the release date line: under the heading or after the intro paragraph (before the first bullet) is read; after the
+# first bullet the text check refuses it with a message that says where to move it, and the app's reading agrees
+awk '{ print } /^belongs to, so a person/ { print "<!-- wn: released=2026-11-14 -->" }' "$work/good.md" > "$work/date-intro.md"
+expect pass "a date line after the intro paragraph passes the text rules" "$work/date-intro.md"
+onmac pass "a date line after the intro paragraph is read by the app" "$work/date-intro.md"
+awk '{ print } /^  reason it was stopped/ { print "<!-- wn: released=2026-11-14 -->" }' "$work/good.md" > "$work/date-late.md"
+expect fail "a date line after the first bullet fails" "$work/date-late.md"
+grep -q 'comes after the first bullet' "$work/out" && echo "  ok   and says where to put it" || { echo "  FAIL the late-date message"; failures=$((failures + 1)); }
+onmac fail "a date line after the first bullet fails the app's reading" "$work/date-late.md"
+
 if (( failures > 0 )); then echo "changelog-tags-test: $failures check(s) failed" >&2; exit 1; fi
 echo "changelog-tags-test: every tag rule holds"
