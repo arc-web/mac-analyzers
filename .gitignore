@@ -3,6 +3,10 @@
 .claude/
 *.log
 config.local.sh
+# the app's own records about this Mac, written next to config.local.sh
+setup-state.json
+rules.local.json
+.guard-fallback.tsv
 tasks-plans/
 
 # built app + icon artifacts (rebuild with app/build.sh / app/make-icon.sh)

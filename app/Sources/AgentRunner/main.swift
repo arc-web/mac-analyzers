@@ -14,33 +14,23 @@ let args = Array(CommandLine.arguments.dropFirst())
 // a probe that judges itself runs in a throwaway home, never in the person's (see ProbeSandbox.swift)
 if let first = args.first, ProbeSandbox.names.contains(first) { ProbeSandbox.enter(first) }
 
-// `agent-runner --probe-setup` prints the same checklist the Setup screen
-// shows, as plain text. Support can ask for its output, and it is the only
-// way to see the verdicts on a Mac you cannot click through.
+// `agent-runner --probe-setup` prints Setup's rows as text, read live from this Mac (what the Setup screen shows, tab by
+// tab). Support can ask for its output, and it is the only way to see them on a Mac you cannot click through.
+// `--probe-setup-fixtures` judges the rows on example states and exits non-zero when a rule breaks (it is in the gate);
+// `--probe-fda` is the spot-check of the protected folders, read by this program as the background jobs run it.
 if args.first == "--probe-setup" {
-    let engine = EngineStatus.probe()
-    let report = SetupAudit.probe(
-        notifications: SetupCheck(id: "notifications", title: "Alerts",
-                                  why: "", verdict: .unset,
-                                  detail: "not queryable outside the app"),
-        loginItem: SetupCheck(id: "login", title: "Opens at login",
-                              why: "", verdict: .unset,
-                              detail: "not queryable outside the app"))
-    print("version: \(BuildInfo.current.versionText)")
-    print("engine: \(engine.summary)  root: \(AnalyzersPaths.suiteRoot.path)")
-    print("bundled: \(AnalyzersPaths.usingBundledEngine)")
-    for check in report.checks {
-        let mark: String
-        switch check.verdict {
-        case .ready: mark = "OK   "
-        case .blocking: mark = "BLOCK"
-        case .degraded: mark = "WARN "
-        case .unset: mark = "-    "
-        }
-        print("\(mark) \(check.title): \(check.detail)")
-    }
-    print("\(report.ready)/\(report.total) ready · usable: \(report.isUsable)")
-    exit(report.isUsable ? 0 : 1)
+    await probeSetupLive()
+}
+if args.first == "--probe-setup-fixtures" {
+    probeSetupFixtures()
+}
+// `--probe-onboarding [--state fresh|upgraded|continuing|lostFDA]` judges when the Welcome flow appears and with which steps
+// (exits non-zero when a rule breaks; in the gate). See OnboardingProbe.swift.
+if args.first == "--probe-onboarding" {
+    probeOnboarding(state: args.firstIndex(of: "--state").flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil })
+}
+if args.first == "--probe-fda" {
+    probeFullDiskAccess()
 }
 
 // `agent-runner --probe-build` prints what the Update screen, the sidebar item,
@@ -284,6 +274,10 @@ if args.first == "--probe-channels" {
 if args.first == "--probe-versions" {
     await probeVersions()
 }
+// `--probe-whats-new [--changelog <file>]` prints how What's New reads a changelog; `--probe-whats-new-fixture`
+// judges the parser on stand-in releases (WhatsNewProbe.swift).
+if args.first == "--probe-whats-new" { probeWhatsNew(args) }
+if args.first == "--probe-whats-new-fixture" { probeWhatsNewFixture() }
 if args.first == "--probe-guard-rules" {
     probeGuardRules()
 }
@@ -317,6 +311,12 @@ if args.first == "--probe-memory-kinds" {
 // judges the rules on stand-in processes and fails when one breaks. See KindProbes.swift.
 if args.first == "--probe-kinds" { probeKinds(args) }
 if args.first == "--probe-kinds-fixture" { probeKindsFixture(args) }
+// Memory Guard's rules engine (Watching only): `--check-rules`, `--rules-once`, `--compare-legacy`, `--probe-rules-fixture`.
+// See RulesProbes.swift.
+if args.first == "--check-rules" { probeCheckRules(args) }
+if args.first == "--rules-once" { probeRulesOnce(args) }
+if args.first == "--compare-legacy" { probeCompareLegacy(args) }
+if args.first == "--probe-rules-fixture" { probeRulesFixture(args) }
 if args.first == "--probe-agents" {
     probeAgents(args)
 }
@@ -491,6 +491,9 @@ guard let script = args.first,
         Data("usage: agent-runner /absolute/path/engine-script.sh [args…]\n".utf8))
     exit(2)
 }
+// launchd started this for a job: say what the BACKGROUND jobs can read, as they see it, for Setup (BackgroundAccess)
+// at most half a second, at most once per five minutes: a job's start is never held up by this check
+BackgroundAccess.recordIfDue(timeout: 0.5)
 var cArgs: [UnsafeMutablePointer<CChar>?] = args.map { strdup($0) }
 cArgs.append(nil)
 execv(script, &cArgs)   // the kernel honors the script's shebang

@@ -36,6 +36,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationPoster.shared.setup()
         NotifyBridge.start()
         startUpdateWatcher()
+        startRulesWatcher()
 
         ThermalWatcher.shared.start { title, message in
             NotificationPoster.shared.post(title: title, subtitle: "Thermal",
@@ -57,7 +58,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                self.openSetupIfUnconfigured()
+                self.presentWelcomeOrSetup()
             }
         }
     }

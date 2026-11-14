@@ -1,7 +1,7 @@
 // snapshot-runner — render a real screen of the app to a PNG without ever
 // putting a window in front of anyone.
 //
-//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>]
+//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--seen <version>] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--welcome <fresh|upgraded|continuing>:<step>]
 //   snapshot-runner overview /tmp/overview.png
 //
 // <target> is any deep-link target the app understands (`monitor`, `caches`,
@@ -41,6 +41,9 @@ import SettingsFeature
 let arguments = Array(CommandLine.arguments.dropFirst())
 // `--outline-probe <action> …` drives the shared OutlineTable headless (OutlineProbe.swift); it never renders a screen
 if arguments.first == "--outline-probe" { OutlineProbe.run(Array(arguments.dropFirst())) }
+// `--check-whats-new <changelog> <version|next>`: every screen and icon a What's New tag names exists in this app
+// (WhatsNewCheck.swift); exit 1 when one does not.
+if arguments.first == "--check-whats-new" { WhatsNewCheck.run(arguments) }
 // `--probe-links`: every link that used to open an old Storage screen or the five-cleaner picker lands on a
 // current screen (never on nothing, never on a view that no longer exists); exit 1 when one does not.
 if arguments.first == "--probe-links" {
@@ -96,6 +99,11 @@ do {
     for _ in 0..<4 { checkout.deleteLastPathComponent() }
     let rules = checkout.appending(path: "memory-analyzer/rules/kinds.json")
     if FileManager.default.fileExists(atPath: rules.path) { KindCatalog.use(file: rules) }
+    // and the plan the same way: a render of work in progress shows that work's rules (the person's own changes are read as ever)
+    let planFolder = checkout.appending(path: "memory-analyzer/rules")
+    if FileManager.default.fileExists(atPath: planFolder.appending(path: "plan.json").path) {
+        GuardRules.use(directory: planFolder, local: nil)   // (nil: the person's file, found when it is read, after --home)
+    }
 }
 // Called directly, never awaited: one `await` in this file's top-level code makes the whole of it
 // an async task, and `NSApplication.run()` started inside a task never services the main dispatch
@@ -113,6 +121,15 @@ let output = URL(fileURLWithPath: arguments[1])
 func option(_ name: String) -> String? {
     guard let index = arguments.firstIndex(of: name), arguments.indices.contains(index + 1) else { return nil }
     return arguments[index + 1]
+}
+// `--seen <version>`: the release What's New treats as the last one seen (the card announces a newer one, rows of a
+// newer release say New); the target `sidebar:whatsNewCard` is the overview with the card showing: it starts from an
+// old release, on a release build, whatever else is asked.
+if target == "sidebar:whatsNewCard" {
+    target = "overview"
+    UserDefaults.standard.set(option("--seen") ?? "1.0.0", forKey: "whatsNew.seenVersion")
+} else if let seen = option("--seen") {
+    UserDefaults.standard.set(seen, forKey: "whatsNew.seenVersion")
 }
 // `--home <folder>`: every path the app reads (reports, logs, ledgers) resolves under this folder instead of the account's
 // home, so a screen can be looked at with a log of any size (a run of 6,000 items) without touching the real ones.
@@ -157,7 +174,7 @@ let scrollToEnd = arguments.contains("--scroll-end")
 let scrollSidebar = arguments.contains("--scroll-sidebar")
 /// `--update-state uptodate|dev|available`: which state the sidebar's version item shows
 /// (the network is not asked), to render every state of it.
-let updateStateOption = option("--update-state")
+let updateStateOption = option("--update-state") ?? (arguments.first == "sidebar:whatsNewCard" ? "uptodate" : nil)
 /// `--appearance light|dark`: the app's appearance for this render. Anything else is refused.
 let appearanceOption = option("--appearance")
 if let appearanceOption, !["light", "dark"].contains(appearanceOption) {
@@ -248,11 +265,16 @@ final class Snapshot: NSObject, NSApplicationDelegate {
         if FileManager.default.fileExists(atPath: sources.path) { RecordingSourceCatalog.useList(at: sources) }
         if fakeRunning || fakeFailed || fakeReview { startFakeJobs() }
         if updateStateOption == nil { Task { await updates.check() } }
-        let root = MainWindowView(restoresLocation: false, sidebar: sidebarState)
+        // `--welcome <state:step>` (`fresh:3`) draws the Welcome window's own content at the size it has (use `--size 560x680`), not
+        // the example inside the main window: the target is then only a placeholder
+        let root: AnyView = option("--welcome").map { example in
+            AnyView(WelcomeFlowView(fixture: example)
+                .environment(store).environment(config).environment(jobs).environment(updates))
+        } ?? AnyView(MainWindowView(restoresLocation: false, sidebar: sidebarState)
             .environment(store)
             .environment(config)
             .environment(jobs)
-            .environment(updates)
+            .environment(updates))
         let controller = NSHostingController(rootView: root)
         controller.sceneBridgingOptions = [.toolbars, .title]   // SwiftUI toolbars become the window's
 

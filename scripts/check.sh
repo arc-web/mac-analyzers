@@ -156,21 +156,53 @@ check_changelog() {
   version="$(tr -d ' \n' <VERSION)"
   entry="$(grep -c -E "^## v${version//./\\.}( |\$)" CHANGELOG.md)"
   next="$(grep -c -E '^## Next[[:space:]]*$' CHANGELOG.md)"
+  # the tag rules hold on entries made here (every machine can judge this)
+  if ! scripts/changelog-tags-test.sh >"$OUT" 2>&1; then
+    DETAIL="the What's New tag rules of scripts/changelog-check.sh do not hold"
+    return 1
+  fi
   if [ "$entry" -gt 0 ]; then
-    if scripts/changelog-check.sh "$version" >"$OUT" 2>&1; then
-      : >"$OUT"
-      DETAIL="entry for v$version passes the release-notes check"
-      return 0
+    if ! scripts/changelog-check.sh "$version" >"$OUT" 2>&1; then
+      DETAIL="entry for v$version does not pass scripts/changelog-check.sh"
+      return 1
     fi
-    DETAIL="entry for v$version does not pass scripts/changelog-check.sh"
+    : >"$OUT"
+    DETAIL="entry for v$version passes the release-notes check"
+  elif [ "$next" -gt 0 ]; then
+    DETAIL="'## Next' section present (v$version has no entry yet — it is not released)"
+  else
+    DETAIL="no '## Next' section and no entry for v$version in CHANGELOG.md"
+    return 1
+  fi
+  # whether a screen and an icon a tag names exist is known only to the app: Macs ask it, Linux says it did not
+  if [ "$(uname -s)" != "Darwin" ] || ! command -v swift >/dev/null 2>&1; then
+    DETAIL="$DETAIL; tag screens and icons not checked (needs a Mac with Swift)"
+    return 0
+  fi
+  local scratch="$TMP/changelog-tags"
+  mkdir -p "$scratch"
+  if [ "$entry" -gt 0 ] && ! scripts/changelog-check.sh --on-mac "$version" >"$OUT" 2>&1; then
+    DETAIL="a tag of v$version names a screen or icon the app does not have"
     return 1
   fi
   if [ "$next" -gt 0 ]; then
-    DETAIL="'## Next' section present (v$version has no entry yet — it is not released)"
-    return 0
+    scripts/changelog-check.sh --on-mac Next >"$OUT" 2>&1 || { DETAIL="a tag in '## Next' names a screen or icon the app does not have"; return 1; }
   fi
-  DETAIL="no '## Next' section and no entry for v$version in CHANGELOG.md"
-  return 1
+  # and the check itself must refuse what it exists to refuse: an unknown screen and an unknown symbol
+  printf '%s\n' '## v3.0.0 — A release with bad tags' '' 'Words for an intro.' '' \
+    '- Names a screen that does not exist. <!-- wn: open=nowhere icon=sparkles -->' \
+    '- Names a symbol that does not exist. <!-- wn: open=guard icon=not.a.real.symbol -->' >"$scratch/bad.md"
+  if MA_CHANGELOG="$scratch/bad.md" scripts/changelog-check.sh --on-mac 3.0.0 >"$OUT" 2>&1; then
+    DETAIL="the tag check passed a tag naming a screen and a symbol that do not exist"
+    return 1
+  fi
+  if ! grep -q 'open=nowhere' "$OUT" || ! grep -q 'not.a.real.symbol' "$OUT"; then
+    DETAIL="the tag check failed, but without naming the screen and the symbol"
+    return 1
+  fi
+  : >"$OUT"
+  DETAIL="$DETAIL; every tag names a real screen and icon"
+  return 0
 }
 
 check_tests() {
@@ -403,7 +435,7 @@ check_snapshot() {
 # would fail. Add a probe to PROBES when it has an exit status worth trusting.
 # --probe-stop-targets is not here: it needs a shell outside the system folders, detaches itself, starts
 # processes and takes about a minute, so it is run by hand (and by the person reviewing a stop path).
-PROBES="--probe-review-session --probe-run-matcher --probe-activity-ids --probe-procargs --probe-cleanup-apply --probe-agents --probe-guard-rules --probe-trend-buckets --probe-login-removal --probe-storage-setting --probe-disk-runway --probe-fence --probe-cleanup-parse --probe-undo-fixture --probe-panel-stop --probe-tm --probe-channels --probe-versions --probe-pressure --probe-memory-kinds --probe-kinds-fixture --probe-recording-sources --probe-recordings-engine"
+PROBES="--probe-review-session --probe-run-matcher --probe-activity-ids --probe-procargs --probe-cleanup-apply --probe-agents --probe-guard-rules --probe-trend-buckets --probe-login-removal --probe-storage-setting --probe-disk-runway --probe-fence --probe-cleanup-parse --probe-undo-fixture --probe-panel-stop --probe-tm --probe-channels --probe-versions --probe-pressure --probe-memory-kinds --probe-kinds-fixture --probe-rules-fixture --check-rules --compare-legacy --probe-recording-sources --probe-recordings-engine --probe-setup-fixtures --probe-onboarding --probe-whats-new-fixture"
 check_probes() {
   local app="$ROOT/app"
   if [ "$(uname -s)" != "Darwin" ]; then DETAIL="skipped: not on macOS"; return 2; fi

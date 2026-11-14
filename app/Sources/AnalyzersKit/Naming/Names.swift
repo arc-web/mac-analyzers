@@ -25,6 +25,42 @@ public enum Names {
         public static let app = Names.app
     }
 
+    // MARK: - How It Works
+
+    /// The explainer's tabs, topics and section headings. The topic titles are what the help button of each screen names.
+    public enum HowItWorks {
+        public static let yourData = "Your Data"
+        public static let whatItDoes = "What It Does"
+        public static let whatItNeverDoes = "What It Never Does"
+        public static let whereItIsWritten = "Where It Is Written Down"
+        public static let change = "Change…"
+        public static let export = "Export…"
+        public static let help = "How It Works"
+
+        public static let measures = "How the Monitor Measures Memory"
+        public static let guardSteps = "When Memory Guard Steps In"
+        public static let guardNever = "What Memory Guard Never Touches"
+        public static let cleanup = "Memory Cleanup"
+        public static let safeToRemove = "What Is Safe to Remove"
+        public static let downloadsTemp = "Downloads and Temporary Files"
+        public static let timeMachine = "Time Machine Snapshots"
+        public static let unusedApps = "Unused Apps"
+        public static let oldRecordings = "Old Recordings"
+        public static let loginItems = "Login & Startup Items"
+        public static let network = "Network"
+        public static let whereWritten = "Where Everything Is Written"
+        public static let editByHand = "Settings You Can Edit by Hand"
+        public static let healthReport = "Mac Health Report"
+        public static let privacy = "Privacy: Nothing Leaves This Mac"
+        /// The row where Turn Off used to be: it moved to Setup.
+        public static let turnOffMoved = "Turn Off or Remove"
+
+        /// Every name above, for the check.
+        public static let all = [yourData, whatItDoes, whatItNeverDoes, whereItIsWritten, change, export, help, measures,
+                                 guardSteps, guardNever, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
+                                 oldRecordings, loginItems, network, whereWritten, editByHand, healthReport, privacy, turnOffMoved]
+    }
+
     // MARK: - the sidebar's own button and menu words
 
     public enum Sidebar {
@@ -238,6 +274,101 @@ public enum Names {
         public static let remove = "Remove"
         public static let save = "Save"
         public static let cancel = "Cancel"
+    }
+
+    /// The Welcome flow: its window, steps and buttons.
+    public enum Welcome {
+        public static let windowTitle = "Welcome to Mac Analyzers"
+        public static let newInThisVersion = "New in This Version"
+        public static let stepWelcome = "Welcome"
+        public static let stepBackground = "Background Protection"
+        public static let stepGuard = "Memory Guard"
+        public static let stepNotifications = "Notifications"
+        public static let stepFullDiskAccess = "Full Disk Access"
+        public static let stepTimeMachine = "Time Machine"
+        public static let stepDone = "Done"
+        public static let next = "Continue"
+        public static let back = "Back"
+        public static let setUpLater = "Set Up Later"
+        public static let notNow = "Not Now"
+        public static let turnOn = "Turn On"
+        public static let openMacAnalyzers = "Open Mac Analyzers"
+        public static let continueSetup = "Continue Setup…"
+        public static let showWelcomeAgain = "Show Welcome Again…"
+    }
+
+    /// Setup's tabs, rows, states and buttons.
+    public enum Setup {
+        public static let tabPermissions = "Permissions"
+        public static let tabBackground = "Background"
+        public static let tabProtection = "Protection"
+        public static let stateOn = "On"
+        public static let stateOff = "Off"
+        public static let stateNeedsYou = "Needs You"
+        public static let stateNotAskedYet = "Not Asked Yet"
+        public static let stateCantTell = "Can't Tell"
+        public static let stateOnlyApp = "Only the App Can See Them"
+        public static let notifications = "Notifications"
+        public static let fullDiskAccess = "Full Disk Access"
+        public static let timeMachineThinning = "Time Machine Thinning"
+        public static let openAtLogin = "Open at Login"
+        public static let automation = "Automation"
+        public static let analyzerScripts = "Analyzer Scripts"
+        public static let memoryLimit = "Memory Limit"
+        public static let neverClose = "Never Close"
+        public static let mayBeAskedToQuit = "Apps That May Be Asked to Quit"
+        public static let recordingFolders = "Recording Folders"
+        public static let settingsFile = "Settings File"
+        public static let allowNotifications = "Allow Notifications…"
+        public static let sendTest = "Send a Test"
+        public static let openSystemSettings = "Open System Settings…"
+        public static let turnOn = "Turn On"
+        public static let tryAgain = "Try Again"
+        public static let allow = "Allow…"
+        public static let removePermission = "Remove Permission…"
+        public static let install = "Install"
+        public static let reinstall = "Reinstall"
+        public static let showInActivity = "Show in Activity"
+        public static let change = "Change…"
+        public static let createIt = "Create It"
+        public static let turnOffOrRemove = "Turn Off or Remove…"
+        public static let quitAndReopen = "Quit and Reopen"
+        public static let memoryGuardJob = "Memory Guard"
+        public static let memoryAutoClean = "Memory Auto-Clean"
+        public static let storageDailyClean = "Storage Daily Clean"
+        public static let storageDeepClean = "Storage Deep Clean"
+        public static let allSetUp = "Everything is set up"
+
+        /// The name of a background job, by its launchd label.
+        public static func jobTitle(_ label: String) -> String {
+            switch label {
+            case "com.mac-analyzers.memory-guard": memoryGuardJob
+            case "com.mac-analyzers.memory-autoclean.daily": memoryAutoClean
+            case "com.mac-analyzers.storage-autoclean.daily": storageDailyClean
+            case "com.mac-analyzers.storage-autoclean.deep": storageDeepClean
+            default: label
+            }
+        }
+
+        /// What a background job gets the person.
+        public static func jobWhy(_ label: String) -> String {
+            switch label {
+            case "com.mac-analyzers.memory-guard": "Watches memory continuously and steps in when one app holds too much."
+            case "com.mac-analyzers.memory-autoclean.daily": "Closes leftover and idle developer servers, headless browsers, emulators and build daemons."
+            case "com.mac-analyzers.storage-autoclean.daily": "Removes build caches nobody has written to for days."
+            case "com.mac-analyzers.storage-autoclean.deep": "The deeper clean: idle projects' packages, package-manager caches, unused Docker images and Time Machine's local snapshots."
+            default: ""
+            }
+        }
+
+        /// "A", "A and B", "A, B and C".
+        public static func list(_ items: [String]) -> String {
+            switch items.count {
+            case 0: ""
+            case 1: items[0]
+            default: items.dropLast().joined(separator: ", ") + " and " + (items.last ?? "")
+            }
+        }
     }
 
     /// Where an item found in temp and agent folders lives, and the verdict on it.
@@ -613,9 +744,61 @@ public enum Names {
         public static let all = [last24, last3, last7, last14, last30, last90]
     }
 
+    // MARK: - What's New
+
+    public enum WhatsNew {
+        public static let title = "What's New"
+        public static let throughoutTheApp = "Throughout the App"
+        public static let earlierChanges = "Earlier Changes"
+        public static let aboutThisRelease = "About This Release"
+        public static let moreInThisRelease = "More in This Release"
+        public static let otherNotes = "Other Notes"
+        public static let seeWhatsNew = "See What's New"
+        public static let new = "New"
+        public static let dismiss = "Dismiss"
+        public static let filter = "Show"
+        public static let allReleases = "All Releases"
+        public static let latestRelease = "Latest Release"
+        public static let feature = "Feature"
+        public static let featureNotFound = "Feature Not Found"
+        public static let release = "Release"
+        public static let releaseTitle = "Release Title"
+        /// Sentences and captions, not names: the check of capitalization does not judge them.
+        public static let notYetReleased = "Not yet released"
+        public static let notInTheseNotes = "It is not in the release notes this copy carries."
+        public static let opensThisFeature = "Opens this feature"
+        /// "Notes for v2.71.0": the row under the "Other Notes" group; the unreleased section has no version.
+        public static func notesFor(_ version: String?) -> String { version.map { "Notes for v\($0)" } ?? "Notes for This Build" }
+        public static func earlierFeatures(_ count: Int) -> String { "\(count) earlier features" }
+        /// "7 new features": the sidebar card's one line about a release.
+        public static func featureCount(_ count: Int) -> String { count == 1 ? "1 new feature" : "\(count) new features" }
+        /// "New in 2.71": the sidebar card's title.
+        public static func newIn(_ version: String) -> String { "New in \(version)" }
+        /// "Open Memory Guard": the button on a feature's screen.
+        public static func open(_ screen: String) -> String { "Open \(screen)" }
+        public static let named = [title, throughoutTheApp, earlierChanges, aboutThisRelease, moreInThisRelease, otherNotes, featureNotFound, release, releaseTitle,
+                                   seeWhatsNew, new, dismiss, filter, allReleases, latestRelease, feature]
+    }
+
     // MARK: - Memory Guard
 
     public enum Guard {
+        public static let stateActing = "Acting"
+        public static let stateWatching = "Watching"
+        public static let stateOff = "Off"
+        public static let stateCantRun = "Can't Run"
+        public static let tabPlan = "When Memory Runs Out"
+        public static let tabHistory = "History"
+        public static let rule = "Rule"
+        public static let matchingNow = "Matching Now"
+        public static let thisWeek = "Last 7 Days"
+        public static let steps = "Steps"
+        public static let protectedNow = "Protected Right Now"
+        public static let mayQuitList = "Apps That May Be Asked to Quit"
+        public static let neverCloseList = "Never Close"
+        public static let wouldHave = "Would Have Done"
+        public static let theRule = "The Rule"
+        public static let actingNotYet = "Acting is not available for this rule yet: it only watches and writes what it would have done."
         public static let stopped = "Stopped"
         public static let alerts = "Alerts"
         public static let period = "Period"
@@ -707,6 +890,18 @@ public enum Names {
                  StorageTab.diskImages, StorageTab.packageManagers, StorageTab.xcodeSimulators,
                  StorageTab.docker, StorageTab.toolCaches].map { ("Storage tab", $0) }
         rows += [Prune.pnpm, Prune.npm, Prune.brew, Prune.simulators, Prune.docker].map { ("Prune", $0) }
+        rows += [Welcome.windowTitle, Welcome.newInThisVersion, Welcome.stepWelcome, Welcome.stepBackground, Welcome.stepGuard,
+                 Welcome.stepNotifications, Welcome.stepFullDiskAccess, Welcome.stepTimeMachine, Welcome.stepDone, Welcome.next,
+                 Welcome.back, Welcome.setUpLater, Welcome.notNow, Welcome.turnOn, Welcome.openMacAnalyzers,
+                 Welcome.continueSetup, Welcome.showWelcomeAgain].map { ("Welcome", $0) }
+        rows += [Setup.tabPermissions, Setup.tabBackground, Setup.tabProtection, Setup.stateOn, Setup.stateOff, Setup.stateNeedsYou,
+                 Setup.stateNotAskedYet, Setup.stateCantTell, Setup.stateOnlyApp, Setup.notifications, Setup.fullDiskAccess,
+                 Setup.timeMachineThinning, Setup.openAtLogin, Setup.automation, Setup.analyzerScripts, Setup.memoryLimit,
+                 Setup.neverClose, Setup.mayBeAskedToQuit, Setup.recordingFolders, Setup.settingsFile, Setup.allowNotifications,
+                 Setup.sendTest, Setup.openSystemSettings, Setup.turnOn, Setup.tryAgain, Setup.allow, Setup.removePermission,
+                 Setup.install, Setup.reinstall, Setup.showInActivity, Setup.change, Setup.createIt, Setup.turnOffOrRemove,
+                 Setup.quitAndReopen, Setup.memoryGuardJob, Setup.memoryAutoClean, Setup.storageDailyClean, Setup.storageDeepClean]
+            .map { ("Setup", $0) }
         rows += Recordings.sourceTitles.values.sorted().map { ("Recording source", $0) }
         rows += [Recordings.sources, Recordings.sourcesButton, Recordings.chooseFolders, Recordings.addFolder,
                  Recordings.foundOnThisMac, Recordings.yourFolders, Recordings.notOffered, Recordings.keepRecordingsFor,
@@ -726,6 +921,7 @@ public enum Names {
         rows += [Sidebar.title, Sidebar.show, Sidebar.hide, Sidebar.enterFullScreen, Sidebar.exitFullScreen].map { ("Sidebar", $0) }
         rows += [Channel.heading, Channel.releases, Channel.beta, Channel.thisCopy, Channel.installBeta, Channel.rebuild].map { ("Channel", $0) }
         rows += [TimeMachine.removePermission, TimeMachine.permissionRowTitle].map { ("Time Machine", $0) }
+        rows += HowItWorks.all.map { ("How It Works", $0) }
         rows += [Raw.screen, Raw.searchPrompt, Raw.copy, Raw.noOutput, Raw.showAll, Raw.showOlder].map { ("Raw", $0) }
         rows += [Monitor.everything, Monitor.tools, Monitor.lens, Monitor.lensMemory, Monitor.lensEnergy, Monitor.lensDisk,
                  Monitor.name, Monitor.whatItIs, Monitor.memory, Monitor.cpu, Monitor.pid, Monitor.energy, Monitor.read,
@@ -736,8 +932,9 @@ public enum Names {
                  MemoryKind.showInMonitor, MemoryKind.overTime, MemoryKind.whoHoldsTheMost, MemoryKind.whatItIs].map { ("Memory kind", $0) }
         rows += Kind.all.map { ("Kind", $0) }
         rows += Period.all.map { ("Period", $0) }
+        rows += WhatsNew.named.map { ("What's New", $0) }
         rows += [Stop.stop, Stop.quit, Stop.forceStop, Stop.leaveRunning, Stop.leftAlone, Stop.leftAloneOne].map { ("Stop", $0) }
-        rows += [Guard.stopped, Guard.alerts, Guard.period, Guard.show, Guard.nothingToReport,
+        rows += [Guard.stopped, Guard.alerts, Guard.period, Guard.show, Guard.tabPlan, Guard.tabHistory, Guard.rule, Guard.matchingNow, Guard.thisWeek, Guard.steps, Guard.protectedNow, Guard.mayQuitList, Guard.neverCloseList, Guard.wouldHave, Guard.theRule, Guard.stateActing, Guard.stateWatching, Guard.stateOff, Guard.stateCantRun, Guard.nothingToReport,
                  Guard.nothingHere, Guard.eventGone, Guard.whatHappened, Guard.theProgram, Guard.whyTheGuardDoesThis,
                  Guard.eachTime, Guard.whatWasUsingMemory, Guard.macAtThatMoment, Guard.showRawLines].map { ("Guard", $0) }
         rows += [Cleanup.leftovers, Cleanup.everythingNow, Cleanup.devServers, Cleanup.orphanedTools, Cleanup.emulators,

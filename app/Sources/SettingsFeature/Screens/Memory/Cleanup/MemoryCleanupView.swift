@@ -24,6 +24,7 @@ struct MemoryCleanupView: View {
 
     var body: some View {
         DataScreen(title: Names.Screen.memoryCleanup, subtitle: subtitle) { content }
+            .helpTopic(.cleanup, screen: Names.Screen.memoryCleanup)
             .toolbar { toolbar }
             .onAppear {
                 applyPendingLink()

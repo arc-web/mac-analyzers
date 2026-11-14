@@ -125,8 +125,13 @@ through `config.local.sh` (never hardcoded).
   `open(target: "log:guardLog")`), never by posting a notification.
   The sidebar's visibility is ONE state, the split view's `columnVisibility` held by
   `MainWindowView` (remembered across launches): the toolbar button
-  (`SidebarVisibility.swift`, a `Toggle`, accent icon when shown), its tooltip and the
-  View menu item (Control-Command-S, through `focusedSceneValue`) all derive from it, and
+  (`SidebarVisibility.swift`, a `Toggle` in the system's look, no accent colour), its tooltip
+  and the View menu item (Control-Command-S, through `focusedSceneValue`) all derive from it.
+  Both send `toggleSidebar:` through the responder chain, as the system's own button does, so
+  the sidebar collapses inside the window and the window never changes size (`scripts/check.sh
+  sidebar` toggles at 900 and 780 wide and fails on any frame change); if the sidebar has not
+  moved shortly after, the button sets the state itself. The window's minimum width is on the
+  content, never on the split view (a minimum there grows the window by the sidebar's width). And
   while the sidebar is hidden resting the pointer on the leading edge or the button shows
   it as an overlay over the content (`SidebarPeek.swift`; the content never resizes; in
   full screen the system's own edge reveal is left alone).
@@ -149,6 +154,26 @@ through `config.local.sh` (never hardcoded).
   `ANALYZERS_RECORDING_SOURCES` and refuses the folders the Sources window refuses: a source must
   be inside the home folder (not the Library or a hidden folder) or on `/Volumes/<disk>/…`, checked on the path
   as written AND where it really leads (`RecordingFolderRule`; `rec_refusal` in `cleanup.sh`).
+- **How It Works and help.** `Screens/App/HowItWorks/` is one explainer (four tabs, a topic screen each, deep link `howItWorks:<topic>`),
+  written from this Mac's own readings (`HowItWorksFacts`: config through `ConfigStore`, the installed schedule through `ScheduleKit`);
+  a topic never quotes a figure it did not read and never promises "preview first" for a job the installed schedule applies by itself
+  (`--apply` in the plist). A screen names its topic with `.helpTopic(_, screen:)` (`Shared/HelpTopic.swift`): that always fills Help ›
+  "How <Screen> Works" (through `focusedSceneValue`, as `AppCommands` reads it) and, unless `button: false`, adds the toolbar "?" —
+  which a screen with a full toolbar (the Storage review screens) leaves out.
+- The **Welcome flow** is its own `Window` scene (`id: "welcome"`, `Screens/Welcome/`), opened through the open-window signal like the main
+  window (`SettingsOpener.open(target: "welcome")`, deep link `welcome`; `WelcomeRequest.open(.automatic|.continuing|.again)` says why).
+  WHEN it opens by itself is `WelcomePlanner` (`AnalyzersKit/Setup/WelcomeStep.swift`): a new install (no `~/mac-analyzers/setup-state.json`,
+  no settings file, no background job) gets every step and the window opens (the first launch); an update never takes focus at
+  login: a step introduced after `seenVersion` (each step carries the release that FIRST had what it asks for, so an existing install is
+  not re-onboarded) that is not satisfied, answered or merely informational (the guard preview) badges Setup, and Continue Setup… carries
+  it out; a finished flow, a permission lost after an update, and anything when the defaults key `welcome.neverOpen` is set (the tools set
+  it) get nothing. What is saved when the flow is shown is the newer of the release and the newest step's version, so a development build
+  cannot loop. What each step shows is the SAME reading Setup uses (`SetupInputs`, `SetupItems`,
+  `SystemSettingsHandoff`, `SetupActions`): never a second checker. A new install also marks the version it came with as seen for the
+  What's New card (`whatsNew.seenVersion`). `agent-runner --probe-onboarding [--state …]` judges the rules; render a step inside the main window with
+  `SnapshotRunner welcome:fixture:<fresh|upgraded|continuing>:<step>`, or the window's own content at its own size with
+  `SnapshotRunner overview out.png --welcome <state>:<step> --size 560x680`. Turn Off › Remove from this Mac deletes
+  `setup-state.json` (the app's memory of what it showed, not the person's records), so a reinstall is a new install.
 - Every Storage task is one screen (`Screens/Storage/`): Preview, the
   preview's rows as tabs and groups in the shared review table, one Apply
   through `JobStore.apply(from:approved:)`, History and Show Raw Output; a
@@ -210,7 +235,11 @@ through `config.local.sh` (never hardcoded).
   it); the owner's screen is not a test fixture. It cannot click: anything
   interactive (a running job, a confirmation, the menu-bar panel) still
   needs an on-screen check, and those are asked for first.
-  `agent-runner --probe-setup` prints the Setup checklist as text.
+  `agent-runner --probe-setup` prints Setup's rows (three tabs, each with its state, evidence and action) as text, read
+  live from this Mac; `--probe-setup-fixtures` judges them on example states and `--probe-fda` is the Full Disk Access
+  spot-check of the folders the product reads, as this program reads them. A Setup row is a READ (`SetupInputs`), and a
+  row that only System Settings can change goes through `SystemSettingsHandoff`: the exact pane, which switch, watched and
+  confirmed. `Setup/ProtectedPlaces.swift` is the list that check reads, as data.
   `agent-runner --probe-memory [--all]` prints the Monitor pane's memory
   census as text (where memory is + every process group with its total).
   The census is the ONE classifier: it gives every group its category AND its
@@ -274,6 +303,17 @@ through `config.local.sh` (never hardcoded).
   --probe-activity [--real]` prints the sections, `--probe-activity-ids` proves
   ids survive a log growing, `--probe-failures` prints the failure sentences, and
   `--probe-pid-recycle` proves a stop refuses a recycled pid.
+- **Memory Guard's rules are data, and in this version they only watch.** `memory-analyzer/rules/{kinds,plan,protected}.json`
+  are read by `AnalyzersKit/Rules/` (`GuardRules`: the plan plus the person's sparse `~/mac-analyzers/rules.local.json`;
+  an unknown field makes that rule, or the whole local file, unusable and says so). `RulesEngine` looks at the census once a
+  minute while the app runs and `RuleEvaluator` says what each rule would do; the only thing written is a would-have row
+  in `reports/memory/rule-outcomes.jsonl`. NOTHING in the app stops, quits or signals anything: a rule that reads Acting is
+  one the guard SCRIPT already carries out (the dev-tooling cap and the critical-pressure step), and the engine writes no
+  row for it. The script reads from the app only `.guard-fallback.tsv` (`lib/guard-select.sh`: the Never Close names and paths and a
+  pause, which can only NARROW what it does; the cap and the stop switches are `config.local.sh`'s alone) and its own `KILLABLE_RE`, and spares
+  every live coding session of `lib/coding-agents.tsv` (`memory-analyzer/tests/guard-exemption-test.sh`). Acting rules and
+  CONTRIBUTING's invariant text are a later phase. `agent-runner --check-rules`, `--compare-legacy [--real]` (the script's
+  set against the engine's: the engine's must be inside) and `--rules-once` show it; `--probe-rules-fixture` judges it.
 - **One period, one loader.** A screen with a period (Trends, Memory Guard) takes it from the shared
   `ReportPeriod` (`AnalyzersKit/History/`: 24 hours, 3, 7, 14, 30, 90 days, begun by `GuardHistory.periodStart`; a
   chart's bars are `TrendBuckets`: hourly for 24 hours, daily after) and shows it with `PeriodToolbar` in
@@ -417,7 +457,28 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   for someone who uses the app and has never seen the code — full sentences,
   what changed for THEM, no commit shorthand, no code names. The gate runs
   three times (cut-release, the pre-merge-commit hook on main, release.sh),
-  so a hand-made merge cannot ship without one either.
+  so a hand-made merge cannot ship without one either. The app's What's New
+  lists each bullet as a feature row (icon, one line, version and date,
+  grouped by the screen it belongs to; each opens its own screen with a button
+  to the real one), so from v2.71.0 every bullet ends with ONE tag GitHub does
+  not show, `<!-- wn: open=<screen> icon=<SF Symbol> title="Short Title" -->`
+  (`open` is a deep-link name such as `monitor`, `guard` or `recordings`, or `-`
+  for a change across the app; one screen per bullet; `title` is optional and
+  title style; `image=` is reserved and ignored). The date under the heading
+  (`<!-- wn: released=2026-11-14 -->`) is written by `cut-release.sh`, never by
+  hand. `changelog-check.sh --print` removes every tag, so the GitHub release
+  body is the same prose as ever, and the prose rules run on the text without
+  them. ONE parser reads the tags, `AnalyzersKit/Updates/WhatsNew+Parse.swift`
+  (`agent-runner --probe-whats-new[-fixture]`); whether a screen and an icon
+  really exist only the app can say, so `changelog-check.sh --on-mac` asks
+  `snapshot-runner --check-whats-new` from `scripts/check.sh changelog`,
+  `cut-release.sh` and `release.sh` (a Mac without Swift cannot release; Linux
+  pull requests check the text rules and say the rest was not run). The sidebar
+  card that announces the newest unseen release is `whatsNew.seenVersion` in the
+  defaults (never on a development build or a first launch); render it with
+  `snapshot-runner sidebar:whatsNewCard out.png`, and What's New with
+  `updates:whatsNew`, `updates:whatsNew:latest` and `updates:whatsNew:<version>`
+  (`MA_CHANGELOG=app/Fixtures/whats-new.md` for stand-in releases).
 - Installed clones update via `./upgrade.command` (Finder double-clickable):
   `git pull --ff-only` → `app/build.sh` (reinstalls to /Applications) → both
   `*-manage-agents.sh install` → relaunch the app (prefers the /Applications

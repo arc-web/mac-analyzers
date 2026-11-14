@@ -14,6 +14,10 @@ public struct MemoryTunables: Equatable, Sendable {
     public var cpuHogTicks = 3         // GUARD_CPU_HOG_TICKS
     public var protectExtra: [String] = []   // ANALYZERS_PROTECT_EXTRA (regex alts)
     public var reclaimApps: [String] = []    // ANALYZERS_RECLAIM_APPS (comma list)
+    /// GUARD_INTERVAL: seconds between the guard's checks. Read only (How It Works quotes it; no pane writes it).
+    public var guardIntervalSeconds = 15
+    /// GUARD_DEV_SWEEP_SECS: seconds between the guard's idle-developer-tools passes (0 = never). Read only.
+    public var devSweepSeconds = 120
     public init() {}
 }
 
@@ -38,6 +42,10 @@ public struct StorageTunables: Equatable, Sendable {
     public var nmRequireClean = true           // ANALYZERS_NM_REQUIRE_CLEAN (1/0)
     public var turboCacheMaxGB = 2             // ANALYZERS_TURBO_CACHE_MAX_GB
     public var worktreeIdleDays = 0            // ANALYZERS_WORKTREE_IDLE_DAYS (0 = off)
+    // Temp & Agents: how long each kind of leftover must sit idle. Read only (How It Works quotes them; no pane writes them).
+    public var tempIdleHours = 24              // TEMP_CLEAN_MIN_AGE_HOURS
+    public var tempAgentScratchDays = 3        // TEMP_CLEAN_AGENT_SCRATCH_DAYS
+    public var tempToolDownloadDays = 14       // TEMP_CLEAN_NPX_DAYS
     public init() {}
 }
 
@@ -138,6 +146,11 @@ public final class ConfigStore {
         if let v = value("GUARD_HARD_CAP_MB").flatMap({ Int($0) }) { memory.hardCapMB = v }
         if let v = value("GUARD_HARDCAP_KILL") { memory.hardCapKill = v != "0" }
         if let v = value("GUARD_PRESSURE_KILL") { memory.pressureKill = v != "0" }
+        if let v = value("GUARD_DEV_SWEEP_SECS").flatMap({ Int($0) }), v >= 0 { memory.devSweepSeconds = v }
+        if let v = value("GUARD_INTERVAL").flatMap({ Int($0) }), v > 0 { memory.guardIntervalSeconds = v }
+        if let v = value("TEMP_CLEAN_MIN_AGE_HOURS").flatMap({ Int($0) }), v > 0 { storage.tempIdleHours = v }
+        if let v = value("TEMP_CLEAN_AGENT_SCRATCH_DAYS").flatMap({ Int($0) }), v > 0 { storage.tempAgentScratchDays = v }
+        if let v = value("TEMP_CLEAN_NPX_DAYS").flatMap({ Int($0) }), v > 0 { storage.tempToolDownloadDays = v }
         if let v = value("GUARD_SPIKE_MB").flatMap({ Int($0) }) { memory.spikeMB = v }
         if let v = value("GUARD_SPIKE_MIN_MB").flatMap({ Int($0) }) { memory.spikeMinMB = v }
         if let v = value("GUARD_CPU_HOG_PCT").flatMap({ Int($0) }) { memory.cpuHogPct = v }
@@ -254,6 +267,9 @@ public final class ConfigStore {
         let tmp = AnalyzersPaths.configLocal.appendingPathExtension("tmp")
         try out.write(to: tmp, atomically: true, encoding: .utf8)
         _ = try fm.replaceItemAt(AnalyzersPaths.configLocal, withItemAt: tmp)
+        // what the guard script and the cleanups read from the app: the person's Never Close list (best effort; the numbers
+        // above are the managed block's alone)
+        GuardFallbackFile.write(neverClose: GuardRules.load().local.neverClose)
     }
 
     /// Escape POSIX ERE metacharacters so a literal app name stays literal

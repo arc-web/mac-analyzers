@@ -109,8 +109,21 @@ struct StorageReviewScreen<Category: StorageCategory>: View {
         return text.isEmpty ? nil : text
     }
 
+    /// The How It Works topic this cleanup is explained in: the help button names it.
+    private var helpTopic: HowItWorksTopic? {
+        switch kind {
+        case .storageClean: .safeToRemove
+        case .janitor, .tempClean: .downloadsTemp
+        case .unusedApps: .unusedApps
+        case .recordings: .oldRecordings
+        default: nil
+        }
+    }
+
     var body: some View {
         DataScreen(title: title, subtitle: subtitle) { content }
+            // the toolbar here is full (preview, apply, sources, search): the topic is reached from the Help menu
+            .helpTopic(helpTopic, screen: title, button: false)
             .searchable(text: $query, prompt: "Search")
             .toolbar { actions }
             .modifier(StorageTabs(screen: screenKey, items: tabItems, selection: tabBinding))
