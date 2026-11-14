@@ -7,6 +7,16 @@ without an entry here — see `scripts/cut-release.sh`. The app lists each
 bullet as a feature of its own, so every bullet ends with a short tag that
 GitHub does not show; `scripts/changelog-check.sh` says what it must hold.
 
+## Next
+
+Notes for the release being worked on collect here. When it ships, this
+heading becomes its version and title, and this note is deleted. Every bullet
+ends with one tag after its last word, written exactly like this one: `<!-- wn: open=guard icon=shield.lefthalf.filled title="Short Title" -->`.
+The screen is a deep-link name such as `monitor`, `trends` or `recordings`
+(`-` for a change across the whole app), the icon is an SF Symbol, and the
+title is optional. One screen per bullet: a change that touches two screens
+is two bullets. The release date is added when the release is cut.
+
 ## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
 <!-- wn: released=2026-11-14 -->
 
