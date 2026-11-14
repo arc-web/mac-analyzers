@@ -50,7 +50,7 @@ public enum GuardPlanPreview {
         public let wouldPick: String
     }
 
-    /// The plan as one value: read from a look at what is running (`RulesEngine.look`, which writes nothing when asked not to).
+    /// The plan as one value: read from a look at what is running (`RulesEngine.look`; asked not to write, it writes no file and leaves the day's once-a-day keys for the watcher).
     public struct Plan: Sendable {
         public let ladder: String
         public let steps: [Step]
