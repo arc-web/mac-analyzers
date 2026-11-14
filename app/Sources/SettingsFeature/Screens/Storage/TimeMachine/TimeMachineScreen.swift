@@ -60,7 +60,7 @@ struct TimeMachineScreen: View {
                                 emptyText: "Looks at the local snapshots Time Machine keeps on this Mac, which hold space you have freed. Nothing is deleted until you review it.",
                                 preview: preview) { content }
         }
-        .helpTopic(.timeMachine)
+        .helpTopic(.timeMachine, screen: Names.Screen.timeMachine)
         .toolbar { actions }
         .safeAreaBar(edge: .top, alignment: .leading, spacing: 0) { permissionBar }
         .onAppear {

@@ -1,17 +1,24 @@
 import Foundation
 import AnalyzersKit
 
-/// The Memory tab's topics, written with this Mac's numbers.
+/// The Memory tab's topics, written with this Mac's numbers. A sentence that would quote a value that was not read is left out.
 extension HowItWorksTopic {
 
-    func memoryContent(_ f: HowItWorksFacts) -> TopicContent {
+    @MainActor func memoryContent(_ f: HowItWorksFacts) -> TopicContent {
         switch self {
         case .measures:
+            var installed = ""
+            if let total = f.totalMemory, let used = f.usedMemory { installed = " On this Mac, \(total) is installed and \(used) is in use." }
+            var compressor = ""
+            if let original = f.compressedOriginal, let held = f.compressed {
+                compressor = " Right now the compressor holds about \(original) of idle app memory in \(held) of real memory."
+            }
             return TopicContent(
-                summary: "\(f.usedMemory) of your \(f.totalMemory) is in use right now.",
+                summary: f.usedMemory.flatMap { used in f.totalMemory.map { "\(used) of your \($0) is in use right now." } }
+                    ?? "How the Monitor reads memory.",
                 does: [
-                    "The Monitor shows resident memory: the physical memory a program occupies right now. That is the number every size in Mac Analyzers shows, and the one Memory Guard acts on. On this Mac, \(f.totalMemory) is installed and \(f.usedMemory) is in use.",
-                    "Activity Monitor's “Memory” column also counts compressed and swapped-out memory, so a program can show 7 GB or more there while its resident size stays under your limit of \(f.limit). That is why a big program can survive when memory pressure is low: macOS has already compressed it. Right now the compressor holds about \(f.compressedOriginal) of idle app memory in \(f.compressed) of real memory.",
+                    "The Monitor shows resident memory: the physical memory a program occupies right now. That is the number every size in Mac Analyzers shows, and the one Memory Guard acts on.\(installed)",
+                    "Activity Monitor's “Memory” column also counts compressed and swapped-out memory, so a program can show 7 GB or more there while its resident size stays under your limit of \(f.limit). That is why a big program can survive when memory pressure is low: macOS has already compressed it.\(compressor)",
                 ],
                 never: [
                     "Graphics (GPU) memory is deliberately not counted. macOS offers no public figure for how much of it each program uses, and on Apple Silicon's shared memory the pressure signal that Memory Guard already watches is the one that matters.",
@@ -21,18 +28,20 @@ extension HowItWorksTopic {
 
         case .guardSteps:
             let hardCap = f.hardCapStops
-                ? "When that program is over your limit (\(f.limit) on this Mac, \(f.limitShare)), it is stopped at any pressure level, at most once a minute, and a crisis report is written first so you can see what was using the memory. You can change Memory Guard to only warn you in Settings › Memory."
-                : "When that program is over your limit (\(f.limit) on this Mac, \(f.limitShare)), Memory Guard writes a crisis report and tells you. You have switched it to warn only in Settings › Memory, so it stops nothing."
+                ? "When that program is over your limit (\(f.limitPhrase)), it is stopped at any pressure level, by default at most once a minute, and a crisis report is written first so you can see what was using the memory. You can change Memory Guard to only warn you in \(Names.Group.settings) › \(Names.Screen.memorySettings)."
+                : "When that program is over your limit (\(f.limitPhrase)), Memory Guard writes a crisis report and tells you. You have switched it to warn only in \(Names.Group.settings) › \(Names.Screen.memorySettings), so it stops nothing."
             let pressure = f.pressureStops
-                ? "When macOS says memory is critically short, the biggest program Memory Guard may stop that is using more than 500 MB is stopped. You can switch this to warn only in Settings › Memory."
-                : "When macOS says memory is critically short, Memory Guard tells you. You have switched it to warn only in Settings › Memory."
+                ? "When macOS says memory is critically short, the biggest program Memory Guard may stop that is using more than 500 MB is stopped. You can switch this to warn only in \(Names.Group.settings) › \(Names.Screen.memorySettings)."
+                : "When macOS says memory is critically short, Memory Guard tells you. You have switched it to warn only in \(Names.Group.settings) › \(Names.Screen.memorySettings)."
             let kinds = f.devToolKinds.isEmpty
                 ? "Only developer tools are ever stopped automatically."
                 : "Only developer tools are ever stopped automatically: \(f.devToolKinds.joined(separator: ", ")). That covers programs such as node, npm, bun, tsx and deno, the dev servers of Next.js, Vite, Webpack and Turbo, Vitest and Jest, and Playwright and headless browsers."
+            var summary = "Your limit is \(f.limitPhrase)."
+            if f.logsRead { summary += " This week: \(f.week.stopped) stopped, \(f.week.spikes) sudden jumps." }
             return TopicContent(
-                summary: "Your limit is \(f.limit), \(f.limitShare)." + (f.logsRead ? " This week: \(f.week.stopped) stopped, \(f.week.spikes) sudden jumps." : ""),
+                summary: summary,
                 does: [
-                    "Memory Guard checks every 15 seconds. Each time it looks at the single biggest program it is allowed to stop.",
+                    "Memory Guard checks \(f.guardEvery). Each time it looks at the single biggest program it is allowed to stop.",
                     hardCap,
                     pressure,
                     "A sudden jump (a program growing by \(f.megabytes(f.spikeMB)) since the last check while using more than \(f.megabytes(f.spikeMinMB))) and a program using more than \(f.cpuHogPercent) percent of a processor for \(f.cpuHogChecks) checks in a row only ever notify you. Nothing is stopped for either.",
@@ -66,17 +75,21 @@ extension HowItWorksTopic {
                           .init(title: Names.HowItWorks.change, target: "memory")])
 
         case .cleanup:
-            let schedule = f.schedules.first { $0.name == "Memory auto-clean" }?.text ?? "Not scheduled"
+            let label = GuardControl.memoryCleanLabel
+            let scheduled = f.byItself(label, does: "closes leftover developer and AI servers and stale headless browsers") ?? f.notScheduled(label)
             let alsoQuit = f.alsoQuit == 0
                 ? "You have not listed any apps to be asked to quit."
                 : "\(f.alsoQuit) \(f.alsoQuit == 1 ? "app is" : "apps are") on your list of apps to ask to quit."
+            var summary = f.schedule(label)?.installed == true ? "Runs \(f.schedule(label)?.when?.lowercased() ?? "on a schedule"), by itself." : "Not scheduled on this Mac."
+            if f.logsRead { summary += " This week it helped free \(f.megabytes(f.week.memoryFreedMB))." }
             return TopicContent(
-                summary: "Runs \(schedule.lowercased())." + (f.logsRead ? " This week it helped free \(f.megabytes(f.week.memoryFreedMB))." : ""),
+                summary: summary,
                 does: [
-                    "Memory Cleanup looks for leftover developer and AI servers and old headless browsers. It runs \(schedule.lowercased()), and you can run it yourself from its screen.",
-                    "It always shows a preview first. Nothing is closed until you review the preview and apply it. \(alsoQuit)",
+                    scheduled,
+                    "When you start \(Names.Screen.memoryCleanup) yourself from its screen, it always shows a preview first, and nothing is closed until you review the preview and apply it. \(alsoQuit)",
+                    "\(Names.Screen.schedule) in \(Names.Group.settings) changes when the scheduled run happens, or switches it off.",
                 ],
-                never: ["It never closes anything you did not see in a preview, and it never touches your protected programs."],
+                never: ["A run you start yourself never closes anything you did not see in a preview, and no run touches your protected programs."],
                 written: ["Each run writes a full report (see \(Names.HowItWorks.whereWritten)) and appears in Activity."],
                 buttons: [.init(title: "Open \(Names.Screen.memoryCleanup)", target: "actions:memoryClean"),
                           .init(title: Names.HowItWorks.change, target: "schedule")])

@@ -45,6 +45,7 @@ public enum Names {
         public static let downloadsTemp = "Downloads and Temporary Files"
         public static let timeMachine = "Time Machine Snapshots"
         public static let unusedApps = "Unused Apps"
+        public static let oldRecordings = "Old Recordings"
         public static let loginItems = "Login & Startup Items"
         public static let network = "Network"
         public static let whereWritten = "Where Everything Is Written"
@@ -57,7 +58,7 @@ public enum Names {
         /// Every name above, for the check.
         public static let all = [yourData, whatItDoes, whatItNeverDoes, whereItIsWritten, change, export, help, measures,
                                  guardSteps, guardNever, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
-                                 loginItems, network, whereWritten, editByHand, healthReport, privacy, turnOffMoved]
+                                 oldRecordings, loginItems, network, whereWritten, editByHand, healthReport, privacy, turnOffMoved]
     }
 
     // MARK: - the sidebar's own button and menu words
@@ -273,6 +274,27 @@ public enum Names {
         public static let remove = "Remove"
         public static let save = "Save"
         public static let cancel = "Cancel"
+    }
+
+    /// The Welcome flow: its window, steps and buttons.
+    public enum Welcome {
+        public static let windowTitle = "Welcome to Mac Analyzers"
+        public static let newInThisVersion = "New in This Version"
+        public static let stepWelcome = "Welcome"
+        public static let stepBackground = "Background Protection"
+        public static let stepGuard = "Memory Guard"
+        public static let stepNotifications = "Notifications"
+        public static let stepFullDiskAccess = "Full Disk Access"
+        public static let stepTimeMachine = "Time Machine"
+        public static let stepDone = "Done"
+        public static let next = "Continue"
+        public static let back = "Back"
+        public static let setUpLater = "Set Up Later"
+        public static let notNow = "Not Now"
+        public static let turnOn = "Turn On"
+        public static let openMacAnalyzers = "Open Mac Analyzers"
+        public static let continueSetup = "Continue Setup…"
+        public static let showWelcomeAgain = "Show Welcome Again…"
     }
 
     /// Setup's tabs, rows, states and buttons.
@@ -832,6 +854,10 @@ public enum Names {
                  StorageTab.diskImages, StorageTab.packageManagers, StorageTab.xcodeSimulators,
                  StorageTab.docker, StorageTab.toolCaches].map { ("Storage tab", $0) }
         rows += [Prune.pnpm, Prune.npm, Prune.brew, Prune.simulators, Prune.docker].map { ("Prune", $0) }
+        rows += [Welcome.windowTitle, Welcome.newInThisVersion, Welcome.stepWelcome, Welcome.stepBackground, Welcome.stepGuard,
+                 Welcome.stepNotifications, Welcome.stepFullDiskAccess, Welcome.stepTimeMachine, Welcome.stepDone, Welcome.next,
+                 Welcome.back, Welcome.setUpLater, Welcome.notNow, Welcome.turnOn, Welcome.openMacAnalyzers,
+                 Welcome.continueSetup, Welcome.showWelcomeAgain].map { ("Welcome", $0) }
         rows += [Setup.tabPermissions, Setup.tabBackground, Setup.tabProtection, Setup.stateOn, Setup.stateOff, Setup.stateNeedsYou,
                  Setup.stateNotAskedYet, Setup.stateCantTell, Setup.stateOnlyApp, Setup.notifications, Setup.fullDiskAccess,
                  Setup.timeMachineThinning, Setup.openAtLogin, Setup.automation, Setup.analyzerScripts, Setup.memoryLimit,

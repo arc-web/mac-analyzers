@@ -28,7 +28,7 @@ struct DiskScreen: View {
                 backupsSection
             }
         }
-        .helpTopic(.safeToRemove)
+        .helpTopic(.safeToRemove, screen: Names.Screen.disk)
         .toolbar {
             ToolbarItem {
                 Button { checkAll() } label: { Label("Preview All", systemImage: "eye") }

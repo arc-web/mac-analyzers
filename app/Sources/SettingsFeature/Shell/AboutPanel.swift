@@ -14,7 +14,12 @@ enum AboutPanel {
         let centred = NSMutableParagraphStyle()
         centred.alignment = .center
         credits.addAttribute(.paragraphStyle, value: centred, range: NSRange(location: 0, length: credits.length))
-        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
+        // the panel's own version line would show the bundle's release number even on a development build; the sidebar and
+        // Updates show `BuildInfo`'s version, so the panel shows the same one
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .credits: credits,
+            .applicationVersion: BuildInfo.current.shortVersion,
+        ])
         NSApp.activate()
     }
 }

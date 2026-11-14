@@ -114,14 +114,16 @@ struct StorageReviewScreen<Category: StorageCategory>: View {
         switch kind {
         case .storageClean: .safeToRemove
         case .janitor, .tempClean: .downloadsTemp
-        case .unusedApps, .recordings: .unusedApps
+        case .unusedApps: .unusedApps
+        case .recordings: .oldRecordings
         default: nil
         }
     }
 
     var body: some View {
         DataScreen(title: title, subtitle: subtitle) { content }
-            .helpTopic(helpTopic)
+            // the toolbar here is full (preview, apply, sources, search): the topic is reached from the Help menu
+            .helpTopic(helpTopic, screen: title, button: false)
             .searchable(text: $query, prompt: "Search")
             .toolbar { actions }
             .modifier(StorageTabs(screen: screenKey, items: tabItems, selection: tabBinding))

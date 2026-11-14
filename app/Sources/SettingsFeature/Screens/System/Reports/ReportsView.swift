@@ -47,7 +47,7 @@ struct ReportsView: View {
                 .frame(minWidth: 280, idealWidth: 480, maxWidth: .infinity)
         }
         }
-        .helpTopic(.whereWritten)
+        .helpTopic(.whereWritten, screen: Names.Screen.reports)
         .scopeTabsToolbar(screen: "reports", items: tabs, selection: $kind)
         .toolbar { toolbar }
         .fileExporter(isPresented: $exporting,

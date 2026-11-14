@@ -7,6 +7,7 @@ import AnalyzersKit
 public struct AppCommands: Commands {
     @FocusedValue(\.navigator) private var navigator
     @FocusedValue(\.screenActions) private var screen
+    @FocusedValue(\.screenHelp) private var help
     @FocusedValue(\.scopeTabs) private var tabs
     @FocusedValue(\.sidebarCommands) private var sidebar
 
@@ -40,6 +41,16 @@ public struct AppCommands: Commands {
         CommandGroup(replacing: .help) {
             Button(Names.HowItWorks.help) { navigator?.open(target: "howItWorks") }
                 .disabled(navigator == nil)
+            // the focused screen's own topic; disabled, never hidden, on a screen that has none
+            Button(help.map { "How \($0.screen) Works" } ?? "How This Screen Works") {
+                if let help { navigator?.open(target: help.topic.target) }
+            }
+            .disabled(help == nil || navigator == nil)
+        }
+
+        // Help: the Welcome flow again, from the first step
+        CommandGroup(after: .help) {
+            Button(Names.Welcome.showWelcomeAgain) { WelcomeRequest.open(.again) }
         }
 
         CommandGroup(after: .toolbar) {

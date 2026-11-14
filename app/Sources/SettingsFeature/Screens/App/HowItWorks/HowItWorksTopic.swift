@@ -27,7 +27,7 @@ enum HowItWorksTab: String, CaseIterable, Hashable, Sendable {
 /// One thing the app explains. Its deep link is `howItWorks:<raw value>`; each data screen's help button names one.
 enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
     case measures, guardSteps, guardNever, cleanup
-    case safeToRemove, downloadsTemp, timeMachine, unusedApps
+    case safeToRemove, downloadsTemp, timeMachine, unusedApps, oldRecordings
     case loginItems, network
     case whereWritten, editByHand, healthReport, privacy
 
@@ -36,7 +36,7 @@ enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sen
     var tab: HowItWorksTab {
         switch self {
         case .measures, .guardSteps, .guardNever, .cleanup: .memory
-        case .safeToRemove, .downloadsTemp, .timeMachine, .unusedApps: .storage
+        case .safeToRemove, .downloadsTemp, .timeMachine, .unusedApps, .oldRecordings: .storage
         case .loginItems, .network: .system
         case .whereWritten, .editByHand, .healthReport, .privacy: .yourData
         }
@@ -52,6 +52,7 @@ enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sen
         case .downloadsTemp: Names.HowItWorks.downloadsTemp
         case .timeMachine: Names.HowItWorks.timeMachine
         case .unusedApps: Names.HowItWorks.unusedApps
+        case .oldRecordings: Names.HowItWorks.oldRecordings
         case .loginItems: Names.HowItWorks.loginItems
         case .network: Names.HowItWorks.network
         case .whereWritten: Names.HowItWorks.whereWritten
@@ -71,6 +72,7 @@ enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sen
         case .downloadsTemp: "arrow.down.circle"
         case .timeMachine: "clock.arrow.circlepath"
         case .unusedApps: "square.dashed"
+        case .oldRecordings: "film"
         case .loginItems: "person.crop.circle.badge.questionmark"
         case .network: "network"
         case .whereWritten: "doc.text"

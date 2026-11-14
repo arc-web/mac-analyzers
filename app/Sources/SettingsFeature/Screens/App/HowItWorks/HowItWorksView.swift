@@ -24,10 +24,12 @@ struct HowItWorksView: View {
                     ForEach(HowItWorksTopic.allCases.filter { $0.tab == tab }) { topic in
                         row(topic, facts: facts)
                     }
-                    if tab == .yourData { moved }
-                    #if canImport(ProKit)
-                    ProAboutSlot()
-                    #endif
+                    if tab == .yourData {
+                        moved
+                        #if canImport(ProKit)
+                        ProAboutSlot()
+                        #endif
+                    }
                 }
                 .listStyle(.inset)
                 .runHistoryRows()
@@ -51,7 +53,8 @@ struct HowItWorksView: View {
                             .foregroundStyle(.secondary)
                     }
                 } icon: {
-                    Image(systemName: topic.symbol)
+                    // an icon tile: its size is its job, so the titles of rows with different symbols line up
+                    Image(systemName: topic.symbol).frame(width: Tokens.Icon.row, height: Tokens.Icon.row)
                 }
                 .labelStyle(.centeredIcon)
                 Spacer(minLength: Tokens.Space.xl)
@@ -68,7 +71,7 @@ struct HowItWorksView: View {
     /// Where Turn Off used to be in this screen: it is in Setup now, with the rest of this Mac's configuration.
     private var moved: some View {
         Section {
-            Button { navigator.open(target: "setup") } label: {
+            Button { navigator.open(target: "uninstall") } label: {
                 HStack {
                     Label {
                         VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
@@ -78,7 +81,7 @@ struct HowItWorksView: View {
                                 .foregroundStyle(.secondary)
                         }
                     } icon: {
-                        Image(systemName: "power")
+                        Image(systemName: "power").frame(width: Tokens.Icon.row, height: Tokens.Icon.row)
                     }
                     .labelStyle(.centeredIcon)
                     Spacer(minLength: Tokens.Space.xl)
