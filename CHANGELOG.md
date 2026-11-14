@@ -8,6 +8,7 @@ bullet as a feature of its own, so every bullet ends with a short tag that
 GitHub does not show; `scripts/changelog-check.sh` says what it must hold.
 
 ## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
+<!-- wn: released=2026-11-14 -->
 
 - What's New now lists each new feature on its own, grouped by the screen it
   belongs to, with an icon and the date it arrived. Open one to read about it
