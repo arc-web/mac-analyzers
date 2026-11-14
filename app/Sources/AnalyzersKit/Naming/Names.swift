@@ -354,9 +354,9 @@ public enum Names {
         public static func jobWhy(_ label: String) -> String {
             switch label {
             case "com.mac-analyzers.memory-guard": "Watches memory continuously and steps in when one app holds too much."
-            case "com.mac-analyzers.memory-autoclean.daily": "Closes orphaned developer servers and stale headless browsers once a day."
+            case "com.mac-analyzers.memory-autoclean.daily": "Closes leftover and idle developer servers, headless browsers, emulators and build daemons."
             case "com.mac-analyzers.storage-autoclean.daily": "Removes build caches nobody has written to for days."
-            case "com.mac-analyzers.storage-autoclean.deep": "The weekly deeper clean: idle projects' packages, package-manager caches and unused Docker images."
+            case "com.mac-analyzers.storage-autoclean.deep": "The deeper clean: idle projects' packages, package-manager caches, unused Docker images and Time Machine's local snapshots."
             default: ""
             }
         }

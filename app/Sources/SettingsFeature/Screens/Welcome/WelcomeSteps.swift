@@ -15,7 +15,7 @@ struct WelcomeIntroStep: View {
                         "It is watched all the time, and an app that takes too much is flagged.")
                     row("internaldrive", "Storage",
                         "\(ByteSize.text(numbers.diskTotal, .headline)) disk, \(ByteSize.text(numbers.diskUsed, .headline)) used, \(ByteSize.text(numbers.diskFree, .headline)) free",
-                        "Caches, old downloads and leftovers are listed for you to review before a cleanup you start is applied. The daily and weekly cleanups you turn on next run by themselves, and Schedule changes or switches them off.")
+                        "Caches, old downloads and leftovers are listed for you to review before a cleanup you start is applied. The background cleanups you turn on next run by themselves, and Schedule changes or switches them off.")
                     row("person.crop.circle.badge.questionmark", "Start-up",
                         numbers.startupItems.map { "\($0) things start by themselves" } ?? "Everything that starts by itself, listed",
                         "Login items, launch agents and background helpers, with what is left behind by apps you removed.")

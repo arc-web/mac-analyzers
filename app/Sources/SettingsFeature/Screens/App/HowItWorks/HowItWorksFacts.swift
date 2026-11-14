@@ -21,10 +21,10 @@ struct HowItWorksFacts: Sendable {
         let name: String
         let installed: Bool
         let when: String?
+        /// What the installed plist passes to the script; empty when the command could not be read.
+        let arguments: [String]
         /// nil when the installed command could not be read.
-        let appliesByItself: Bool?
-        /// What the job does, from the kit's own description of it.
-        let detail: String
+        var appliesByItself: Bool? { arguments.isEmpty ? nil : arguments.contains("--apply") }
         var id: String { label }
     }
 
@@ -45,6 +45,9 @@ struct HowItWorksFacts: Sendable {
     var cpuHogPercent = 150
     var cpuHogChecks = 3
     var guardIntervalSeconds = 15
+    var devSweepSeconds = 120
+    var worktreeIdleDays = 0
+    var toolCacheCount = 0
     var tempIdleHours = 24
     var tempAgentScratchDays = 3
     var tempToolDownloadDays = 14
@@ -90,16 +93,6 @@ struct HowItWorksFacts: Sendable {
 
     func schedule(_ label: String) -> ScheduleLine? { schedules.first { $0.label == label } }
 
-    /// What one background job does BY ITSELF on this Mac, from its installed schedule: when, and that it applies without
-    /// a preview if the installed command does. nil when it is not installed (the caller says so).
-    func byItself(_ label: String, does what: String) -> String? {
-        guard let line = schedule(label), line.installed, let when = line.when else { return nil }
-        let applying = line.appliesByItself == true
-            ? " It applies what it finds by itself, without a preview, so nothing waits for your review."
-            : ""
-        return "\(line.name) runs \(when.lowercased()) and \(what).\(applying)"
-    }
-
     /// "1 hour", "24 hours".
     func hours(_ n: Int) -> String { "\(n) \(n == 1 ? "hour" : "hours")" }
     /// "every 15 seconds", "every second".
@@ -130,6 +123,9 @@ final class HowItWorksModel {
         f.cpuHogPercent = config.memory.cpuHogPct
         f.cpuHogChecks = config.memory.cpuHogTicks
         f.guardIntervalSeconds = config.memory.guardIntervalSeconds
+        f.devSweepSeconds = config.memory.devSweepSeconds
+        f.worktreeIdleDays = config.storage.worktreeIdleDays
+        f.toolCacheCount = config.storage.toolCaches.count
         f.tempIdleHours = config.storage.tempIdleHours
         f.tempAgentScratchDays = config.storage.tempAgentScratchDays
         f.tempToolDownloadDays = config.storage.tempToolDownloadDays
@@ -147,11 +143,10 @@ final class HowItWorksModel {
             return HowItWorksFacts.ScheduleLine(
                 label: job.label, name: Names.Setup.jobTitle(job.label), installed: installed,
                 when: installed ? ScheduleKit.describe(job.label) : nil,
-                appliesByItself: ScheduleKit.programArguments(for: job.label).map { $0.contains("--apply") },
-                detail: job.detail)
+                arguments: ScheduleKit.programArguments(for: job.label) ?? [])
         }
         f.channel = UpdateChannel.saved
-        f.timeMachinePermission = TimeMachinePermission.ruleFileExists()
+        f.timeMachinePermission = await TimeMachinePermission.isAllowed()
         f.version = BuildInfo.current.shortVersion
         f.disk = LiveStats.diskUsage()
         if let size = try? FileManager.default.attributesOfItem(atPath: AnalyzersPaths.guardLog.path)[.size] as? Int64 {

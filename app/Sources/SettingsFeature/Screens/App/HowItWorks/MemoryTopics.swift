@@ -46,6 +46,9 @@ extension HowItWorksTopic {
                     pressure,
                     "A sudden jump (a program growing by \(f.megabytes(f.spikeMB)) since the last check while using more than \(f.megabytes(f.spikeMinMB))) and a program using more than \(f.cpuHogPercent) percent of a processor for \(f.cpuHogChecks) checks in a row only ever notify you. Nothing is stopped for either.",
                     kinds,
+                    f.devSweepSeconds > 0
+                        ? "Separately, while Memory Guard runs it starts a quieter pass of the memory cleaner every \(f.devSweepSeconds) seconds, and that pass applies without a preview: it stops developer tools whose parent is gone once they sit idle, development servers nobody is using, emulators and simulators nobody is using, and Gradle and Kotlin build daemons while no build runs. It never touches apps, protected programs or a live coding session."
+                        : "Memory Guard does not run the quieter pass of the memory cleaner that stops idle developer tools, because you have set its interval to 0.",
                     "Rules for other kinds of program are only being watched: Memory Guard shows what they would have done and stops nothing for them.",
                 ] + (f.logsRead ? ["In the last 7 days: \(f.week.stopped) programs stopped, \(f.week.spikes) sudden jumps, \(f.week.pressure) pressure warnings and \(f.week.cpuHogs) busy-processor alerts."] : []),
                 never: [
@@ -76,7 +79,7 @@ extension HowItWorksTopic {
 
         case .cleanup:
             let label = GuardControl.memoryCleanLabel
-            let scheduled = f.byItself(label, does: "closes leftover developer and AI servers and stale headless browsers") ?? f.notScheduled(label)
+            let scheduled = f.memoryCleanDoes(label) ?? f.notScheduled(label)
             let alsoQuit = f.alsoQuit == 0
                 ? "You have not listed any apps to be asked to quit."
                 : "\(f.alsoQuit) \(f.alsoQuit == 1 ? "app is" : "apps are") on your list of apps to ask to quit."

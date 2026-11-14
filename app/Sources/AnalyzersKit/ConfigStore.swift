@@ -16,6 +16,8 @@ public struct MemoryTunables: Equatable, Sendable {
     public var reclaimApps: [String] = []    // ANALYZERS_RECLAIM_APPS (comma list)
     /// GUARD_INTERVAL: seconds between the guard's checks. Read only (How It Works quotes it; no pane writes it).
     public var guardIntervalSeconds = 15
+    /// GUARD_DEV_SWEEP_SECS: seconds between the guard's idle-developer-tools passes (0 = never). Read only.
+    public var devSweepSeconds = 120
     public init() {}
 }
 
@@ -144,6 +146,7 @@ public final class ConfigStore {
         if let v = value("GUARD_HARD_CAP_MB").flatMap({ Int($0) }) { memory.hardCapMB = v }
         if let v = value("GUARD_HARDCAP_KILL") { memory.hardCapKill = v != "0" }
         if let v = value("GUARD_PRESSURE_KILL") { memory.pressureKill = v != "0" }
+        if let v = value("GUARD_DEV_SWEEP_SECS").flatMap({ Int($0) }), v >= 0 { memory.devSweepSeconds = v }
         if let v = value("GUARD_INTERVAL").flatMap({ Int($0) }), v > 0 { memory.guardIntervalSeconds = v }
         if let v = value("TEMP_CLEAN_MIN_AGE_HOURS").flatMap({ Int($0) }), v > 0 { storage.tempIdleHours = v }
         if let v = value("TEMP_CLEAN_AGENT_SCRATCH_DAYS").flatMap({ Int($0) }), v > 0 { storage.tempAgentScratchDays = v }

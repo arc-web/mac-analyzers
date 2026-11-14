@@ -19,6 +19,8 @@ enum AboutPanel {
         NSApp.orderFrontStandardAboutPanel(options: [
             .credits: credits,
             .applicationVersion: BuildInfo.current.shortVersion,
+            // the panel appends the bundle's build number in brackets ("(2)"); the commit it was built from says more
+            .version: BuildInfo.current.commit.map { String($0.prefix(7)) } ?? "",
         ])
         NSApp.activate()
     }

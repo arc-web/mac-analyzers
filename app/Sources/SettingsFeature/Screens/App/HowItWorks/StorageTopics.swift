@@ -9,15 +9,8 @@ extension HowItWorksTopic {
         switch self {
         case .safeToRemove:
             let daily = GuardControl.storageCleanLabel, deep = GuardControl.storageDeepLabel
-            let scheduledDaily = f.byItself(daily, does: "removes stale build caches") ?? f.notScheduled(daily)
-            let scheduledDeep: String? = {
-                guard let line = f.schedule(deep), line.installed, let when = line.when else { return f.notScheduled(deep) }
-                let more = line.detail.hasPrefix("+ ") ? String(line.detail.dropFirst(2)) : line.detail
-                let applying = line.appliesByItself == true ? " It applies what it finds by itself, without a preview." : ""
-                let snapshots = line.detail.contains("Time Machine") && !f.timeMachinePermission
-                    ? " It leaves Time Machine's local snapshots alone until you give the permission (see \(Names.HowItWorks.timeMachine))." : ""
-                return "\(line.name) runs \(when.lowercased()) and goes further than the daily clean: \(more).\(applying)\(snapshots)"
-            }()
+            let scheduledDaily = f.storageCleanDoes(daily) ?? f.notScheduled(daily)
+            let scheduledDeep = f.storageCleanDoes(deep) ?? f.notScheduled(deep)
             var does: [String] = []
             if let free = f.freeDisk, let total = f.totalDisk {
                 does.append("Your startup disk has \(free) free of \(total).\(f.runway.map { " At your current pace the disk fills in \($0)." } ?? "")")
@@ -25,7 +18,7 @@ extension HowItWorksTopic {
             does.append("\(Names.Screen.cachesAndBuilds) finds what your tools can make again: build caches, the dependency folders of projects you have not touched for \(f.days(f.nodeModulesDays))\(f.nodeModulesNeedClean ? ", and only when they have no unsaved changes" : ""), and package-manager caches.\(f.logsRead ? (f.week.reclaimableBytes.map { " The latest preview found \(ByteSize.text($0, .headline)) you could take back." } ?? " Nothing is waiting from a preview.") : "")")
             does.append("When you start a cleanup yourself it is a preview first: you see what would be removed and untick anything you want kept, and only then does Apply start. Caches and build folders are deleted for good, because your tools make them again, so Undo cannot bring them back.")
             does.append("The cleanups that run by themselves do not wait for you. \(scheduledDaily)")
-            if let scheduledDeep { does.append(scheduledDeep) }
+            does.append(scheduledDeep)
             does.append("\(Names.Screen.schedule) in \(Names.Group.settings) changes when they run, or switches them off.")
             if f.logsRead { does.append("In the last 7 days, \(f.week.cleanRuns) cleanups freed \(ByteSize.text(f.week.storageFreedBytes, .headline)).") }
             var summary = [f.freeDisk.flatMap { free in f.totalDisk.map { "\(free) free of \($0)." } }].compactMap { $0 }.joined()
@@ -34,7 +27,7 @@ extension HowItWorksTopic {
                 summary: summary.isEmpty ? "What can be removed, and what runs by itself." : summary,
                 does: does,
                 never: [
-                    "Nothing is removed from a project that is open in an editor or in use.",
+                    "Build folders are removed only when nothing has written to them for days, and a project that something live runs from is left alone.",
                     "A cleanup you start yourself never removes anything you have not reviewed in a preview.",
                 ],
                 written: ["Each run writes a full report and appears in Activity (see \(Names.HowItWorks.whereWritten))."],
@@ -58,7 +51,7 @@ extension HowItWorksTopic {
         case .timeMachine:
             let deep = GuardControl.storageDeepLabel
             var byItself = ""
-            if let line = f.schedule(deep), line.installed, let when = line.when {
+            if let line = f.schedule(deep), line.installed, line.has("--prune-snapshots"), let when = line.when {
                 byItself = f.timeMachinePermission
                     ? "Because you have given the permission, \(line.name) deletes local snapshots by itself \(when.lowercased()), without asking."
                     : "\(line.name) runs \(when.lowercased()) and would delete local snapshots, but it skips them until you give the permission."
