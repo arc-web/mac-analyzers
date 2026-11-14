@@ -25,6 +25,42 @@ public enum Names {
         public static let app = Names.app
     }
 
+    // MARK: - How It Works
+
+    /// The explainer's tabs, topics and section headings. The topic titles are what the help button of each screen names.
+    public enum HowItWorks {
+        public static let yourData = "Your Data"
+        public static let whatItDoes = "What It Does"
+        public static let whatItNeverDoes = "What It Never Does"
+        public static let whereItIsWritten = "Where It Is Written Down"
+        public static let change = "Change…"
+        public static let export = "Export…"
+        public static let help = "How It Works"
+
+        public static let measures = "How the Monitor Measures Memory"
+        public static let guardSteps = "When Memory Guard Steps In"
+        public static let guardNever = "What Memory Guard Never Touches"
+        public static let cleanup = "Memory Cleanup"
+        public static let safeToRemove = "What Is Safe to Remove"
+        public static let downloadsTemp = "Downloads and Temporary Files"
+        public static let timeMachine = "Time Machine Snapshots"
+        public static let unusedApps = "Unused Apps"
+        public static let oldRecordings = "Old Recordings"
+        public static let loginItems = "Login & Startup Items"
+        public static let network = "Network"
+        public static let whereWritten = "Where Everything Is Written"
+        public static let editByHand = "Settings You Can Edit by Hand"
+        public static let healthReport = "Mac Health Report"
+        public static let privacy = "Privacy: Nothing Leaves This Mac"
+        /// The row where Turn Off used to be: it moved to Setup.
+        public static let turnOffMoved = "Turn Off or Remove"
+
+        /// Every name above, for the check.
+        public static let all = [yourData, whatItDoes, whatItNeverDoes, whereItIsWritten, change, export, help, measures,
+                                 guardSteps, guardNever, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
+                                 oldRecordings, loginItems, network, whereWritten, editByHand, healthReport, privacy, turnOffMoved]
+    }
+
     // MARK: - the sidebar's own button and menu words
 
     public enum Sidebar {
@@ -318,9 +354,9 @@ public enum Names {
         public static func jobWhy(_ label: String) -> String {
             switch label {
             case "com.mac-analyzers.memory-guard": "Watches memory continuously and steps in when one app holds too much."
-            case "com.mac-analyzers.memory-autoclean.daily": "Closes orphaned developer servers and stale headless browsers once a day."
+            case "com.mac-analyzers.memory-autoclean.daily": "Closes leftover and idle developer servers, headless browsers, emulators and build daemons."
             case "com.mac-analyzers.storage-autoclean.daily": "Removes build caches nobody has written to for days."
-            case "com.mac-analyzers.storage-autoclean.deep": "The weekly deeper clean: idle projects' packages, package-manager caches and unused Docker images."
+            case "com.mac-analyzers.storage-autoclean.deep": "The deeper clean: idle projects' packages, package-manager caches, unused Docker images and Time Machine's local snapshots."
             default: ""
             }
         }
@@ -849,6 +885,7 @@ public enum Names {
         rows += [Sidebar.title, Sidebar.show, Sidebar.hide, Sidebar.enterFullScreen, Sidebar.exitFullScreen].map { ("Sidebar", $0) }
         rows += [Channel.heading, Channel.releases, Channel.beta, Channel.thisCopy, Channel.installBeta, Channel.rebuild].map { ("Channel", $0) }
         rows += [TimeMachine.removePermission, TimeMachine.permissionRowTitle].map { ("Time Machine", $0) }
+        rows += HowItWorks.all.map { ("How It Works", $0) }
         rows += [Raw.screen, Raw.searchPrompt, Raw.copy, Raw.noOutput, Raw.showAll, Raw.showOlder].map { ("Raw", $0) }
         rows += [Monitor.everything, Monitor.tools, Monitor.lens, Monitor.lensMemory, Monitor.lensEnergy, Monitor.lensDisk,
                  Monitor.name, Monitor.whatItIs, Monitor.memory, Monitor.cpu, Monitor.pid, Monitor.energy, Monitor.read,

@@ -5,16 +5,10 @@ import AnalyzersKit
 import ProKit
 #endif
 
-/// What can be pushed from the app's own screens. None yet.
+/// What can be pushed from the app's own screens.
 enum AppRoute: Hashable, Codable, Sendable {
-    // An enum with no cases cannot synthesize Codable. Add a case and delete
-    // both methods below.
-    init(from decoder: Decoder) throws {
-        throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
-                                                debugDescription: "AppRoute has no cases"))
-    }
-
-    func encode(to encoder: Encoder) throws {}
+    /// One How It Works topic.
+    case topic(HowItWorksTopic)
 }
 
 /// Whether a newer release exists, for the Updates row's badge: read from the app's one
@@ -46,8 +40,19 @@ enum AppGroup {
         aliases: [
             "update": .main(Location(updates)),
             "about": .main(Location(howItWorks)),
+            "howItWorks": .main(Location(howItWorks)),
             "support": .main(Location(support)),
         ],
+        resolveDynamic: { target in
+            // `howItWorks:<topic>`: How It Works with that topic's screen on top
+            if let topic = HowItWorksTopic.parse(target) { return .main(Location(howItWorks, path: [.app(.topic(topic))])) }
+            // `howItWorks:memory|storage|system|yourData`: the screen on that tab (a link only selects and navigates)
+            if target.hasPrefix("howItWorks:"), let tab = HowItWorksTab(rawValue: String(target.dropFirst("howItWorks:".count))) {
+                ScopeTabMemory.select(tab.rawValue, in: "howItWorks")
+                return .main(Location(howItWorks))
+            }
+            return nil
+        },
         load: nil)
 
     private static var rows: [SidebarRow] {
@@ -65,7 +70,7 @@ enum AppGroup {
     @ViewBuilder private static func screen(_ section: SectionID) -> some View {
         switch section {
         case updates: UpdateSettingsView()
-        case howItWorks: AboutSettingsView()
+        case howItWorks: HowItWorksView()
         case support:
             #if canImport(ProKit)
             ProLicenseScreen()
@@ -76,9 +81,9 @@ enum AppGroup {
         }
     }
 
-    /// `AppRoute` has no cases yet, so no value of it exists and this can never
-    /// run. The empty builder body is the screen for "nothing": it keeps the
-    /// route's shape in place for the first pushed screen without code the
-    /// compiler would rightly call unreachable.
-    @ViewBuilder static func destination(for route: AppRoute) -> some View {}
+    @ViewBuilder static func destination(for route: AppRoute) -> some View {
+        switch route {
+        case .topic(let topic): TopicScreen(topic: topic)
+        }
+    }
 }

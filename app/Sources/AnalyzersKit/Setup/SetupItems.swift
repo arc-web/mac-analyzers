@@ -61,7 +61,7 @@ public enum SetupItems {
 
     static func timeMachine(_ inputs: SetupInputs) -> SetupItem {
         SetupItem(id: "timeMachine", tab: .permissions, title: Names.Setup.timeMachineThinning,
-                  why: "Lets Mac Analyzers delete Time Machine's local snapshots without asking for your password each time.",
+                  why: "Lets Mac Analyzers delete Time Machine's local snapshots without asking for your password each time, including in the scheduled deep clean.",
                   state: inputs.timeMachineAllowed ? .on : .off,
                   evidence: inputs.timeMachineAllowed
                       ? "One command is allowed without a password: deleting Time Machine's local snapshots. Nothing else is."
