@@ -24,15 +24,13 @@ is two bullets. The release date is added when the release is cut.
   new until you've seen it, and goes away when you close it or open What's
   New. <!-- wn: open=- icon=rectangle.badge.plus title="A Card for New Releases" -->
 
-## Next
-
 **Setup shows how Mac Analyzers is set up on your Mac**
 
-Setup is now one screen of your current configuration, in three tabs: Permissions, Background and Protection. Each thing has its own row with where it stands, what was found, and one button. When something can only be changed in System Settings, the row opens the right page, says exactly which switch to turn on, and confirms when you have done it. Full Disk Access is checked by trying the folders Mac Analyzers really reads, instead of guessing. Turn Off or Remove is now on Setup's toolbar, and Old Recordings' folders have a row here too.
+- Setup is now one screen of your current configuration, in three tabs: Permissions, Background and Protection. Each thing has its own row with where it stands, what was found, and one button. When something can only be changed in System Settings, the row opens the right page, says exactly which switch to turn on, and confirms when you have done it. Full Disk Access is checked by trying the folders Mac Analyzers really reads, instead of guessing. Turn Off or Remove is now on Setup's toolbar, and Old Recordings' folders have a row here too. <!-- wn: open=setup icon=checklist title="Setup Shows Your Current Configuration" -->
 
 **A welcome when you first open Mac Analyzers**
 
-On a new install Mac Analyzers now opens a short Welcome window. It shows what it will do on your Mac with your own numbers, turns on the background protection, previews what Memory Guard would do right now, and walks you through notifications and Full Disk Access, with Not Now on every step. After an update, anything new that needs setting up is marked on Setup, without a window taking over your screen. Continue Setup… on the Setup screen picks up where you left off, and Show Welcome Again… in the Help menu starts it over.
+- On a new install Mac Analyzers now opens a short Welcome window. It shows what it will do on your Mac with your own numbers, turns on the background protection, previews what Memory Guard would do right now, and walks you through notifications and Full Disk Access, with Not Now on every step. After an update, anything new that needs setting up is marked on Setup, without a window taking over your screen. Continue Setup… on the Setup screen picks up where you left off, and Show Welcome Again… in the Help menu starts it over. <!-- wn: open=setup icon=hand.wave title="A Welcome on First Launch" -->
 
 **Memory Guard**
 
@@ -41,11 +39,11 @@ On a new install Mac Analyzers now opens a short Welcome window. It shows what i
   macOS services and so on) shows the rules that apply to it and what each rule would
   have done in the last seven days. For now these rules only watch and write down
   what they would have done: nothing new is stopped or closed. The menu-bar panel
-  has a short "Rules Today" line for each tab that has something.
+  has a short "Rules Today" line for each tab that has something. <!-- wn: open=guard icon=shield.lefthalf.filled title="Memory Guard Rules by Kind" -->
 - The guard now keeps its hands off every live coding session, not only Claude Code:
   Codex, Gemini CLI, Copilot, OpenCode and the rest of the list, and everything they
   started. If it ever cannot tell which programs belong to a coding session, it stops
-  nothing and says so.
+  nothing and says so. <!-- wn: open=guard icon=hand.raised title="Live Coding Sessions Are Left Alone" -->
 
 ## v2.71.0 — Recording sources, one period menu and a sidebar you can tuck away
 

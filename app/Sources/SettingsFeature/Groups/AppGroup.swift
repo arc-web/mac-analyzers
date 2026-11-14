@@ -5,16 +5,10 @@ import AnalyzersKit
 import ProKit
 #endif
 
-/// What can be pushed from the app's own screens. None yet.
+/// What can be pushed from the app's own screens.
 enum AppRoute: Hashable, Codable, Sendable {
-    // An enum with no cases cannot synthesize Codable. Add a case and delete
-    // both methods below.
-    init(from decoder: Decoder) throws {
-        throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
-                                                debugDescription: "AppRoute has no cases"))
-    }
-
-    func encode(to encoder: Encoder) throws {}
+    /// One feature of What's New on its own screen, by its id (the release's version and its position in it).
+    case whatsNew(String)
 }
 
 /// Whether a newer release exists, for the Updates row's badge: read from the app's one
@@ -47,8 +41,21 @@ enum AppGroup {
             "update": .main(Location(updates)),
             "about": .main(Location(howItWorks)),
             "support": .main(Location(support)),
+            // the What's New list: scrolls to it, or also narrows it to the newest release
+            "updates:whatsNew": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew")),
+            "updates:whatsNew:latest": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew:latest")),
         ],
+        resolveDynamic: whatsNewLink,
         load: nil)
+
+    /// `updates:whatsNew:<version>`: the first feature of that release on its own screen.
+    private static func whatsNewLink(_ target: String) -> Resolution? {
+        let prefix = "updates:whatsNew:"
+        guard target.hasPrefix(prefix) else { return nil }
+        let version = String(target.dropFirst(prefix.count))
+        guard !version.isEmpty else { return nil }
+        return .main(Location(updates, path: [.app(.whatsNew("\(version)#0"))]))
+    }
 
     private static var rows: [SidebarRow] {
         var rows = [
@@ -76,9 +83,9 @@ enum AppGroup {
         }
     }
 
-    /// `AppRoute` has no cases yet, so no value of it exists and this can never
-    /// run. The empty builder body is the screen for "nothing": it keeps the
-    /// route's shape in place for the first pushed screen without code the
-    /// compiler would rightly call unreachable.
-    @ViewBuilder static func destination(for route: AppRoute) -> some View {}
+    @ViewBuilder static func destination(for route: AppRoute) -> some View {
+        switch route {
+        case .whatsNew(let id): WhatsNewDetailScreen(id: id)
+        }
+    }
 }

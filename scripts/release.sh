@@ -76,6 +76,11 @@ if ! "$root/scripts/changelog-check.sh" "$version"; then
   echo "scripts/cut-release.sh $version again (it merges the fix and retries)." >&2
   exit 1
 fi
+# the screens and icons the entry's tags name must exist in this app, confirmed on this Mac
+if ! "$root/scripts/changelog-check.sh" --on-mac "$version"; then
+  echo "release: NOT shipping $tag — the What's New tags could not be confirmed against the app; nothing was pushed." >&2
+  exit 1
+fi
 title="$("$root/scripts/changelog-check.sh" --title "$version")"
 
 if [[ "${MA_RELEASE_DRYRUN:-0}" == "1" ]]; then

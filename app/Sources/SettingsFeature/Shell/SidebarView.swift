@@ -30,6 +30,7 @@ struct SidebarView: View {
                 ProBadgeSlot()
                 #endif
                 Divider()
+                SidebarWhatsNewCard(navigator: navigator, floating: floating)
                 SidebarVersionItem(navigator: navigator, floating: floating)
             }
         }

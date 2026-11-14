@@ -105,6 +105,12 @@ say "releasing $tag (currently $current)"
 
 # ── 2. the What's New entry — before anything changes ──────────────────────
 scripts/changelog-check.sh "$version"
+# the screens and icons the entry's tags name must exist in THIS app: only the app's code knows, so it is asked here,
+# and a release that cannot be checked (no Swift on this Mac) does not go out
+if ! scripts/changelog-check.sh --on-mac "$version"; then
+  echo "cut-release: stopped — the What's New tags of v$version could not be confirmed against the app. Nothing was changed." >&2
+  exit 1
+fi
 title="$(scripts/changelog-check.sh --title "$version")"
 echo
 echo "──────── What users will read ────────"
@@ -126,18 +132,37 @@ if (( ! assume_yes )) && (( ! dry_run )); then
 fi
 
 # ── 3. version commit ──────────────────────────────────────────────────────
+# The release date goes into the entry (what the app's What's New shows beside each feature), written here and
+# never by hand: today in New York, in the same commit as the version.
 subject="v$version — $title"
+released_on="$(TZ=America/New_York date +%F)"
 if [[ "$current" != "$version" ]]; then
-  say "writing VERSION"
+  say "writing VERSION and the release date"
   if (( ! dry_run )); then
     echo "$version" > VERSION
-    git add VERSION
+    scripts/changelog-check.sh --stamp "$version" "$released_on" >/dev/null
+    git add VERSION CHANGELOG.md
     git commit -q -m "$subject"
   else
-    echo "  [dry-run] echo $version > VERSION && git commit -m \"$subject\""
+    echo "  [dry-run] echo $version > VERSION && scripts/changelog-check.sh --stamp $version $released_on && commit \"$subject\""
+    rehearsal="$(mktemp)"
+    cp CHANGELOG.md "$rehearsal"
+    MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --stamp "$version" "$released_on" >/dev/null
+    MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --stamp "$version" "$released_on" >/dev/null
+    echo "  [dry-run] stamped a copy twice: $(grep -c 'wn: released=' "$rehearsal") release date line(s) in the copy; the notes file would have $(MA_CHANGELOG="$rehearsal" scripts/changelog-check.sh --print "$version" | grep -c 'wn:' || true) tag(s)"
+    rm -f "$rehearsal"
   fi
 else
   say "VERSION already says $version"
+  if (( ! dry_run )); then
+    scripts/changelog-check.sh --stamp "$version" "$released_on" >/dev/null
+    if ! git diff --quiet -- CHANGELOG.md; then
+      git add CHANGELOG.md
+      git commit -q -m "$subject"
+    fi
+  else
+    echo "  [dry-run] scripts/changelog-check.sh --stamp $version $released_on (committed with the release if it changes anything)"
+  fi
 fi
 
 # ── 4. push development ────────────────────────────────────────────────────
