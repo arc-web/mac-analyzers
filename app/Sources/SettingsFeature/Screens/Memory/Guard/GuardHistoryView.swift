@@ -28,6 +28,7 @@ struct GuardHistoryView: View {
         let days = model.days(scope: scope, search: appliedSearch)
         let page = model.page(of: days)
         DataScreen(title: Names.Screen.memoryGuard, subtitle: periodSubtitle(loading: model.loadingWindow, subtitle(page))) { list(days: days, page: page) }
+            .helpTopic(.guardSteps)
             .searchable(text: $search, prompt: "Search by name or process ID")
             .toolbar { toolbar; scopeFilter }
             .onKeyPress(.return) {

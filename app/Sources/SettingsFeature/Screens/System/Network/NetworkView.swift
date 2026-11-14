@@ -57,6 +57,7 @@ struct NetworkView: View {
 
     var body: some View {
         DataScreen(title: Names.Screen.network, subtitle: subtitle) { content }
+            .helpTopic(.network)
             .scopeTabsToolbar(screen: "network", items: tabs, selection: $scope)
             .searchable(text: $query, prompt: "Search programs")
             .toolbar { toolbar }

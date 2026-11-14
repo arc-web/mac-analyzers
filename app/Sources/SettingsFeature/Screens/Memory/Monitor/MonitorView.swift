@@ -79,6 +79,7 @@ struct MonitorView: View {
                 content
             }
         }
+            .helpTopic(.measures)
             .scopeTabsToolbar(screen: "monitor", items: scopeItems, selection: $scope)
             .inspector(isPresented: $inspectorShown) {
                 MonitorInspector(model: model, row: model.row(selection),

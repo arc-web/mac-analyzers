@@ -28,6 +28,7 @@ struct DiskScreen: View {
                 backupsSection
             }
         }
+        .helpTopic(.safeToRemove)
         .toolbar {
             ToolbarItem {
                 Button { checkAll() } label: { Label("Preview All", systemImage: "eye") }

@@ -31,6 +31,17 @@ public struct AppCommands: Commands {
                 .keyboardShortcut(",", modifiers: .command)
         }
 
+        // the standard About window, with the README link in its credits (the version is the panel's own line)
+        CommandGroup(replacing: .appInfo) {
+            Button("About \(Names.app)") { AboutPanel.show() }
+        }
+
+        // Help lists How It Works (the system's default Help item has no help book to open)
+        CommandGroup(replacing: .help) {
+            Button(Names.HowItWorks.help) { navigator?.open(target: "howItWorks") }
+                .disabled(navigator == nil)
+        }
+
         CommandGroup(after: .toolbar) {
             Divider()
             Button("Refresh") { screen?.refresh?() }
