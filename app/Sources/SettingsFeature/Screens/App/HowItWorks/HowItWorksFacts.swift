@@ -146,16 +146,6 @@ extension HowItWorksFacts {
         }
         return f
     }
-
-    /// Just what the Schedule pane's captions need: `read()`, plus Time Machine's permission only when the installed deep
-    /// clean would thin snapshots (the one sentence that quotes it).
-    @MainActor static func forCaptions() async -> HowItWorksFacts {
-        var f = read()
-        if f.schedules.contains(where: { $0.installed && $0.thinsSnapshots }) {
-            f.timeMachinePermission = await TimeMachinePermission.isAllowed()
-        }
-        return f
-    }
 }
 
 /// Loads the facts once and keeps them for a minute, so opening a topic from the list does not read the logs again.

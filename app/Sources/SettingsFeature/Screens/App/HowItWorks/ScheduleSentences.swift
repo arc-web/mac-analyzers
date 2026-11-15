@@ -62,13 +62,15 @@ extension HowItWorksFacts {
     /// (`storage-auto-clean.sh`), daily or deep by the plist's `--mode`. nil: not installed, or it only previews.
     /// `after` is the daily clean's name when the deep clean's clauses are only what the installed daily clean lacks (the
     /// deep clean does everything the daily one does): the daily clean must be installed and applying, with the same
-    /// build-folder age, and the deep clean must carry a Docker clause whenever the daily one does.
+    /// build-folder age and roots, a schedule, and a Docker clause no wider than the deep clean's (an equal one is left out).
     @MainActor private func storageCleanClauses(_ line: HowItWorksFacts.ScheduleLine) -> (does: [String], note: String, after: String?)? {
         guard line.installed, line.has("--apply") else { return nil }
         let deep = line.isDeep
-        let daily = deep ? schedule(GuardControl.storageCleanLabel).flatMap { $0.installed && $0.has("--apply") && !$0.isDeep ? $0 : nil } : nil
+        let daily = deep ? schedule(GuardControl.storageCleanLabel).flatMap { $0.installed && $0.when != nil && $0.has("--apply") && !$0.isDeep ? $0 : nil } : nil
         let extending = daily.flatMap { d in
-            d.value(after: "--cache-age-days") == line.value(after: "--cache-age-days") && (!Self.dockerFlags.contains { d.has($0) } || Self.dockerFlags.contains { line.has($0) }) ? d : nil
+            d.value(after: "--cache-age-days") == line.value(after: "--cache-age-days")
+                && d.value(after: "--roots") == line.value(after: "--roots")
+                && Self.dockerRank(line) >= Self.dockerRank(d) ? d : nil
         }
         var does: [String] = []
         if extending == nil {
@@ -89,7 +91,9 @@ extension HowItWorksFacts {
             does.append("empties npm's cache and prunes the packages pnpm no longer references")
         }
         // the deep clean's Docker clause replaces the daily one; the daily clean's stays whole when nothing extends it
-        if line.has("--docker-images") {
+        if let extending, Self.dockerRank(line) == Self.dockerRank(extending) {
+            // the daily clean already does exactly this
+        } else if line.has("--docker-images") {
             does.append("prunes Docker's stopped containers, unused networks and every image nothing uses, starting Docker first if it is not running and quitting it again if it started it")
         } else if line.has("--docker") {
             does.append("prunes stopped containers, unused networks and dangling images in Docker, starting it first if needed")
@@ -104,7 +108,10 @@ extension HowItWorksFacts {
         return (does, deep ? " Projects that something live runs from, a running process or a loaded background agent, are left alone." : "", extending?.name)
     }
 
-    private static let dockerFlags = ["--docker-images", "--docker", "--docker-running-only"]
+    /// How far a job's Docker clause reaches: none, only when running, starting Docker, or every unused image too.
+    private static func dockerRank(_ line: HowItWorksFacts.ScheduleLine) -> Int {
+        line.has("--docker-images") ? 3 : line.has("--docker") ? 2 : line.has("--docker-running-only") ? 1 : 0
+    }
 
     /// A storage clean's own sentence, with when it runs.
     @MainActor func storageCleanDoes(_ label: String) -> String? {

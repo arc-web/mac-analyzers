@@ -85,10 +85,19 @@ struct ScheduleSettingsView: View {
             }
         }
         .onAppear(perform: load)
-        .task { facts = await HowItWorksFacts.forCaptions() }
+        .task { await loadCaptions() }
     }
 
     // MARK: - plumbing
+
+    /// The captions at once from the quick read, then Time Machine's permission once `sudo -n -l` answers.
+    private func loadCaptions() async {
+        let quick = HowItWorksFacts.read()
+        facts = quick
+        guard quick.schedules.contains(where: { $0.installed && $0.thinsSnapshots }) else { return }
+        let allowed = await TimeMachinePermission.isAllowed()
+        facts?.timeMachinePermission = allowed
+    }
 
     /// A job's caption; the sentence after it only when the job is installed (nothing more to say about one that is not).
     private func caption(_ label: String, then extra: String? = nil) -> String {
