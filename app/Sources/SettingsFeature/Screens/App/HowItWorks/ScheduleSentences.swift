@@ -60,18 +60,35 @@ extension HowItWorksFacts {
 
     /// What a storage clean does, as clauses ("removes …") and a closing note, from its plist's arguments and the settings
     /// (`storage-auto-clean.sh`), daily or deep by the plist's `--mode`. nil: not installed, or it only previews.
-    private func storageCleanClauses(_ line: HowItWorksFacts.ScheduleLine) -> (does: [String], note: String)? {
+    /// `after` is the daily clean's name when the deep clean's clauses are only what the installed daily clean lacks (the
+    /// deep clean does everything the daily one does): the daily clean must be installed and applying, with the same
+    /// build-folder age, and the deep clean must carry a Docker clause whenever the daily one does.
+    @MainActor private func storageCleanClauses(_ line: HowItWorksFacts.ScheduleLine) -> (does: [String], note: String, after: String?)? {
         guard line.installed, line.has("--apply") else { return nil }
         let deep = line.isDeep
-        var does = ["removes build folders (.next, .turbo, dist, build and the like) that nothing has written to for \(days(Int(line.value(after: "--cache-age-days") ?? "") ?? 3))",
-                    "trims each project's Turborepo cache to \(turboCacheMaxGB) GB"]
-        let caches = deep ? toolCaches.count : toolCaches.filter { Self.dailyToolCaches.contains($0) }.count
-        if caches > 0 { does.append("clears the \(caches) \(caches == 1 ? "tool cache" : "tool caches") you opted into") }
+        let daily = deep ? schedule(GuardControl.storageCleanLabel).flatMap { $0.installed && $0.has("--apply") && !$0.isDeep ? $0 : nil } : nil
+        let extending = daily.flatMap { d in
+            d.value(after: "--cache-age-days") == line.value(after: "--cache-age-days") && (!Self.dockerFlags.contains { d.has($0) } || Self.dockerFlags.contains { line.has($0) }) ? d : nil
+        }
+        var does: [String] = []
+        if extending == nil {
+            does += ["removes build folders (.next, .turbo, dist, build and the like) that nothing has written to for \(days(Int(line.value(after: "--cache-age-days") ?? "") ?? 3))",
+                     "trims each project's Turborepo cache to \(turboCacheMaxGB) GB"]
+        }
+        let dailyCaches = toolCaches.filter { Self.dailyToolCaches.contains($0) }.count
+        let caches = deep ? toolCaches.count : dailyCaches
+        if extending != nil {
+            let extra = caches - dailyCaches
+            if extra > 0 { does.append("clears the \(extra) deep-only tool \(extra == 1 ? "cache" : "caches") you opted into") }
+        } else if caches > 0 {
+            does.append("clears the \(caches) \(caches == 1 ? "tool cache" : "tool caches") you opted into")
+        }
         if deep {
             does.append("removes the dependency folders (node_modules) of projects whose files have not changed for \(days(nodeModulesDays))\(nodeModulesNeedClean ? " and whose changes are all saved in git" : "")")
             if worktreeIdleDays > 0 { does.append("removes git worktrees idle for \(days(worktreeIdleDays)) (never a project's main checkout)") }
             does.append("empties npm's cache and prunes the packages pnpm no longer references")
         }
+        // the deep clean's Docker clause replaces the daily one; the daily clean's stays whole when nothing extends it
         if line.has("--docker-images") {
             does.append("prunes Docker's stopped containers, unused networks and every image nothing uses, starting Docker first if it is not running and quitting it again if it started it")
         } else if line.has("--docker") {
@@ -84,27 +101,36 @@ extension HowItWorksFacts {
                 ? "thins Time Machine's local snapshots on this Mac (never the backups on the backup disk)"
                 : "would thin Time Machine's local snapshots, but skips them until you give the permission (see \(Names.HowItWorks.timeMachine))")
         }
-        return (does, deep ? " Projects that something live runs from, a running process or a loaded background agent, are left alone." : "")
+        return (does, deep ? " Projects that something live runs from, a running process or a loaded background agent, are left alone." : "", extending?.name)
     }
 
+    private static let dockerFlags = ["--docker-images", "--docker", "--docker-running-only"]
+
     /// A storage clean's own sentence, with when it runs.
-    func storageCleanDoes(_ label: String) -> String? {
+    @MainActor func storageCleanDoes(_ label: String) -> String? {
         guard let line = schedule(label), line.installed else { return nil }
         guard let when = line.when else { return "\(line.name) is installed without a schedule, so it does not run by itself." }
         guard !line.arguments.isEmpty else { return "\(line.name) runs \(when.lowercased())." }
-        guard let (does, note) = storageCleanClauses(line) else {
+        guard let (does, note, after) = storageCleanClauses(line) else {
             return "\(line.name) runs \(when.lowercased()), but only previews: it removes nothing."
         }
-        return "\(line.name) runs \(when.lowercased()) and \(Names.Setup.list(does)).\(note)" + Self.withoutPreview
+        let what = after.map { "does everything \($0) does, plus it \(Names.Setup.list(does))" } ?? Names.Setup.list(does)
+        return "\(line.name) runs \(when.lowercased()) and \(what).\(note)" + Self.withoutPreview
     }
 
     /// The same description for the Schedule pane's caption, without the time (the pane shows that in its own control): one
-    /// description of each job, read from the same plist. nil when the command could not be read.
-    @MainActor func jobCaption(_ label: String) -> String? {
-        guard let line = schedule(label), line.installed, !line.arguments.isEmpty else { return nil }
-        let clauses = label == GuardControl.memoryCleanLabel ? memoryCleanClauses(line) : storageCleanClauses(line)
-        guard let (does, note) = clauses else { return "Only previews: it changes nothing." }
+    /// description of each job, read from the same plist. A job that is not installed says so, and claims nothing it would
+    /// do; one whose command could not be read says only that.
+    @MainActor func jobCaption(_ label: String) -> String {
+        guard let line = schedule(label), line.installed else { return Names.Setup.jobNotInstalled }
+        guard !line.arguments.isEmpty else { return Names.Setup.jobUnreadable }
+        let isMemory = label == GuardControl.memoryCleanLabel
+        let storage = isMemory ? nil : storageCleanClauses(line)
+        guard let (does, note, after) = isMemory ? memoryCleanClauses(line).map({ ($0.does, $0.note, nil) }) : storage else {
+            return "Only previews: it changes nothing."
+        }
         let list = Names.Setup.list(does)
-        return list.prefix(1).uppercased() + list.dropFirst() + "." + note + " It applies by itself, without a preview."
+        let lead = after.map { "Everything \($0) does, plus it \(list)" } ?? list.prefix(1).uppercased() + list.dropFirst()
+        return lead + "." + note + " It applies by itself, without a preview."
     }
 }
