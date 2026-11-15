@@ -30,7 +30,10 @@ welcome either way.
    `ANALYZERS_STACK_IDLE_MIN`. Unmapped stacks and `ANALYZERS_STACK_PROTECT` are never stopped, and it
    never starts or signals Docker.
 4. Nothing auto-deletes user content: no volumes, no Time Machine backups,
-   no documents. The sudoers rule stays scoped to one exact command.
+   no documents. The one exception is Time Machine's **local** snapshots on
+   this Mac: the scheduled deep clean may thin them, and only after the person
+   explicitly gave the permission (Setup, Time Machine, "Allow…"); the backup
+   disk is never touched. The sudoers rule stays scoped to one exact command.
    Recordings are moved to the Trash only on request, from a reviewed list, and
    never from a folder that syncs to the cloud or that another app indexes.
 5. Anything personal/machine-specific goes through `config.local.sh`
