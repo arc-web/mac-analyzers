@@ -361,6 +361,11 @@ public enum Names {
             }
         }
 
+        /// An uninstalled job's caption: it says what to do, not what the job would do.
+        public static let jobNotInstalled = "Not installed. Install the background jobs from \(Names.Screen.setup)."
+        /// A job that is installed but whose command could not be read.
+        public static let jobUnreadable = "Its command could not be read, so what it does is not shown here."
+
         /// "A", "A and B", "A, B and C".
         public static func list(_ items: [String]) -> String {
             switch items.count {
