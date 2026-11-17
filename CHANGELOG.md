@@ -17,6 +17,8 @@ The screen is a deep-link name such as `monitor`, `trends` or `recordings`
 title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
+- The deep clean no longer removes git worktrees. For a worktree that has been idle, it now clears only the build output git ignores, such as node_modules, .next and dist. The worktree, its source files and local files like an .env always stay. A worktree with uncommitted changes is never touched, and neither is anything inside an agent's .composure/workspaces folder. Build folders a project commits to git, or that sit outside any git project, are never removed by any clean. <!-- wn: open=caches icon=hammer title="Worktrees Are Never Removed" -->
+
 ## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
 <!-- wn: released=2026-11-14 -->
 

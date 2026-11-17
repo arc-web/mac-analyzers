@@ -67,18 +67,15 @@
 #ANALYZERS_NM_AGE_DAYS=14          # node_modules of repos idle this many days (deep)
 #ANALYZERS_NM_REQUIRE_CLEAN=1      # 0 = also when the git tree has uncommitted changes
 #ANALYZERS_TURBO_CACHE_MAX_GB=2    # per-repo .turbo/cache cap, oldest entries go (every run)
-# Idle git worktrees (deep): removed with `git worktree remove` once idle this
-# many days, merged or not — nothing is lost: commits stay on the branch,
-# uncommitted/untracked changes are parked as a commit pinned as
-# refs/parked/<worktree>-<time> (never in the shared stash list, and gc never
-# expires it; `git cherry-pick --no-commit <ref>` brings it back), and ignored
-# files that aren't build output (.env, local databases, keys, notes) are copied
-# to reports/storage/parked-worktrees/ first. Every removal is listed, with the
-# commands that undo it, in reports/storage/worktree-removals.md. Never: main
-# (the branch or a folder named main), locked worktrees, one with submodules,
-# one a terminal/agent session sits in. 0 = off.
+# Idle git worktrees (deep): once a worktree has been idle this many days, its
+# build output is cleared — only paths git ignores whose name is build output
+# (node_modules, .next, dist, .build, …). The worktree itself is never removed,
+# and source files and ignored files that are not build output (.env, local
+# databases, keys, notes) always stay. Never touched at all: every folder under
+# .composure/workspaces/ in every repo, a worktree with uncommitted or
+# untracked changes, main (the branch or a folder named main), locked
+# worktrees, one a terminal/agent session sits in. 0 = off.
 #ANALYZERS_WORKTREE_IDLE_DAYS=0
-#ANALYZERS_WORKTREE_PARK_MAX_MB=1024   # keep a worktree whose local-only or untracked files exceed this
 
 # Downloads janitor (storage-analyzer/downloads-janitor.sh). Everything it
 # moves goes to the Trash, never deleted, and is listed for review first.

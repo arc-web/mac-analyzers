@@ -87,7 +87,7 @@ extension HowItWorksFacts {
         }
         if deep {
             does.append("removes the dependency folders (node_modules) of projects whose files have not changed for \(days(nodeModulesDays))\(nodeModulesNeedClean ? " and whose changes are all saved in git" : "")")
-            if worktreeIdleDays > 0 { does.append("removes git worktrees idle for \(days(worktreeIdleDays)) (never a project's main checkout)") }
+            if worktreeIdleDays > 0 { does.append("clears the build output of git worktrees idle for \(days(worktreeIdleDays)) (never the worktree itself, never one with uncommitted changes)") }
             does.append("empties npm's cache and prunes the packages pnpm no longer references")
         }
         // the deep clean's Docker clause replaces the daily one; the daily clean's stays whole when nothing extends it

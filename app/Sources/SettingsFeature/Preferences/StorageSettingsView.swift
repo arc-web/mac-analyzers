@@ -91,8 +91,8 @@ struct StorageSettingsView: View {
                     VStack(alignment: .leading, spacing: Tokens.Space.hair) {
                         Text(config.storage.worktreeIdleDays == 0
                              ? "Idle worktrees: off"
-                             : "Remove worktrees idle \(config.storage.worktreeIdleDays) \(config.storage.worktreeIdleDays == 1 ? "day" : "days")")
-                        Text("Every idle worktree goes, merged or not, and nothing is lost: its commits stay on its branch, uncommitted changes are parked as a pinned commit in the repo, and local-only files (an .env, a database, notes) are copied aside first. Each removal is listed with the commands that bring it back. Never removed: main, locked worktrees, or one a terminal or agent session is sitting in. Deep clean only.")
+                             : "Clear build output of worktrees idle \(config.storage.worktreeIdleDays) \(config.storage.worktreeIdleDays == 1 ? "day" : "days")")
+                        Text("Only build output that git ignores (node_modules, .next, dist and the like) is removed. The worktree itself, its source files and its local files such as an .env always stay. A worktree with uncommitted changes, any folder under .composure/workspaces, main, a locked worktree and one a terminal or agent session is using are never touched. Deep clean only.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
