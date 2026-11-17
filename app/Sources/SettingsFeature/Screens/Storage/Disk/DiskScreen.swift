@@ -23,6 +23,13 @@ struct DiskScreen: View {
         DataScreen(title: Names.Screen.disk,
                    subtitle: usage.map { "\($0.freeText) free of \($0.totalText)" } ?? "") {
             List {
+                Section {
+                    HubHeader(symbol: "internaldrive.fill", color: .indigo, title: Names.Screen.disk,
+                              caption: "Where the space is, and the cleanups that give it back. Open one to review before anything changes.")
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
                 capacity
                 tasksSection
                 backupsSection

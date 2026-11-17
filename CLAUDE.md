@@ -108,7 +108,12 @@ through `config.local.sh` (never hardcoded).
   (`SettingsFeature/Shared/PaneScaffold.swift`); a screen that shows data (a
   table, a list, a review) is a `DataScreen`
   (`SettingsFeature/Shared/DataScreen.swift`), which fills the window, carries
-  the title and subtitle. A screen never draws its own empty, failed or
+  the title and subtitle. A screen that leads to others (a hub: Overview, Disk) opens with
+  `HubHeader` (`SettingsFeature/Shared/HubHeader.swift`: the `PaneHeader` tile, title and
+  one line, then its nested areas as rows that open them through the `Navigator`) as the
+  first item INSIDE its scroll content; a screen that is a table, a list or a review
+  (Monitor, Activity, Guard, a run) never has one and starts with its data.
+  A screen never draws its own empty, failed or
   loading state: it is `EmptyState` or `LoadingState`
   (`SettingsFeature/Shared/ScreenState.swift`: the system's
   `ContentUnavailableView` and `ProgressView`, filling the space the screen has
