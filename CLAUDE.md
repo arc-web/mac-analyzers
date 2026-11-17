@@ -113,6 +113,11 @@ through `config.local.sh` (never hardcoded).
   one line, then its nested areas as rows that open them through the `Navigator`) as the
   first item INSIDE its scroll content; a screen that is a table, a list or a review
   (Monitor, Activity, Guard, a run) never has one and starts with its data.
+  A sidebar row's icon is the shared `IconTile` in its section's system colour
+  (`SidebarRow.tint`, one colour per group: system colours that follow the user's accent
+  and light or dark, never a hex value). `.listItemTint` was tried first and the system
+  drew every glyph grey in this app, so do not swap the tile for it without a render of
+  both appearances showing colour.
   A screen never draws its own empty, failed or
   loading state: it is `EmptyState` or `LoadingState`
   (`SettingsFeature/Shared/ScreenState.swift`: the system's

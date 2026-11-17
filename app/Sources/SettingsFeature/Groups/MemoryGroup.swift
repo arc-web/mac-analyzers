@@ -24,9 +24,9 @@ enum MemoryGroup {
     static let group = SidebarGroup(
         title: Names.Group.memory,
         rows: [
-            SidebarRow(monitor, Names.Screen.monitor, symbol: "gauge.with.dots.needle.67percent"),
-            SidebarRow(memoryGuard, Names.Screen.memoryGuard, symbol: "shield.lefthalf.filled"),
-            SidebarRow(memoryCleanup, Names.Screen.memoryCleanup, symbol: "sparkles"),
+            SidebarRow(monitor, Names.Screen.monitor, symbol: "gauge.with.dots.needle.67percent", tint: .green),
+            SidebarRow(memoryGuard, Names.Screen.memoryGuard, symbol: "shield.lefthalf.filled", tint: .green),
+            SidebarRow(memoryCleanup, Names.Screen.memoryCleanup, symbol: "sparkles", tint: .green),
         ],
         root: screen,
         aliases: [

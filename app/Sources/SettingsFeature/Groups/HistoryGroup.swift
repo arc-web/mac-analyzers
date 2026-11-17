@@ -16,8 +16,8 @@ enum HistoryGroup {
     static let group = SidebarGroup(
         title: Names.Group.history,
         rows: [
-            SidebarRow(trends, Names.Screen.trends, symbol: "chart.xyaxis.line"),
-            SidebarRow(undo, Names.Screen.undo, symbol: "arrow.uturn.backward"),
+            SidebarRow(trends, Names.Screen.trends, symbol: "chart.xyaxis.line", tint: .teal),
+            SidebarRow(undo, Names.Screen.undo, symbol: "arrow.uturn.backward", tint: .teal),
         ],
         root: screen,
         aliases: [

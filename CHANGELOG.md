@@ -17,6 +17,7 @@ The screen is a deep-link name such as `monitor`, `trends` or `recordings`
 title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
+- The sidebar's icons are in colour again, one colour for each section, in light and dark mode. <!-- wn: open=- icon=sidebar.leading title="Coloured Sidebar Icons" -->
 - Overview and Disk open with a header that says where you are: an icon, the name, one line about it, and Overview lists the screens it summarizes so each is one click away. <!-- wn: open=overview icon=gauge.with.dots.needle.33percent title="Headers on Overview and Disk" -->
 - Settings › Storage is grouped by what each setting controls: build caches, tool caches, code projects, git worktrees, apps and recordings, Downloads and backups. Every setting has a short explanation under it. Nothing about what the cleans do has changed. <!-- wn: open=storage icon=internaldrive.fill title="Storage Settings, Reorganized" -->
 - The deep clean no longer removes git worktrees. For a worktree that has been idle, it now clears only the build output git ignores, such as node_modules, .next and dist. The worktree, its source files and local files like an .env always stay. A worktree with uncommitted changes is never touched, and neither is anything inside an agent's .composure/workspaces folder. Build folders a project commits to git, or that sit outside any git project, are never removed by any clean. <!-- wn: open=caches icon=hammer title="Worktrees Are Never Removed" -->

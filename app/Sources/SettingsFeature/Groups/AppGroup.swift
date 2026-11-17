@@ -72,12 +72,12 @@ enum AppGroup {
 
     private static var rows: [SidebarRow] {
         var rows = [
-            SidebarRow(updates, Names.Screen.updates, symbol: "arrow.down.circle",
+            SidebarRow(updates, Names.Screen.updates, symbol: "arrow.down.circle", tint: .pink,
                        badge: { UpdateBadge.shared.updateAvailable ? "1" : nil }),
-            SidebarRow(howItWorks, Names.Screen.howItWorks, symbol: "questionmark.circle"),
+            SidebarRow(howItWorks, Names.Screen.howItWorks, symbol: "questionmark.circle", tint: .pink),
         ]
         #if !canImport(ProKit)
-        rows.append(SidebarRow(support, Names.Screen.support, symbol: "heart"))
+        rows.append(SidebarRow(support, Names.Screen.support, symbol: "heart", tint: .pink))
         #endif
         return rows
     }

@@ -22,15 +22,19 @@ struct SidebarRow: Identifiable {
     let section: SectionID
     let title: String
     let symbol: String
+    /// The row's icon colour, one per section of the sidebar. A preference the system applies with the user's own
+    /// appearance (`.listItemTint(.preferred)`), never a fixed fill.
+    let tint: Color
     var badge: (@MainActor () -> String?)?
 
     var id: SectionID { section }
 
-    init(_ section: SectionID, _ title: String, symbol: String,
+    init(_ section: SectionID, _ title: String, symbol: String, tint: Color,
          badge: (@MainActor () -> String?)? = nil) {
         self.section = section
         self.title = title
         self.symbol = symbol
+        self.tint = tint
         self.badge = badge
     }
 }
