@@ -18,6 +18,9 @@ title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
 - The deep clean no longer removes git worktrees. For a worktree that has been idle, it now clears only the build output git ignores, such as node_modules, .next and dist. The worktree, its source files and local files like an .env always stay. A worktree with uncommitted changes is never touched, and neither is anything inside an agent's .composure/workspaces folder. Build folders a project commits to git, or that sit outside any git project, are never removed by any clean. <!-- wn: open=caches icon=hammer title="Worktrees Are Never Removed" -->
+- Mac Analyzers now requires macOS 27. <!-- wn: open=- icon=macwindow title="Requires macOS 27" -->
+- Memory Guard's Apps, Tools and macOS tabs switch when you click them again. The two lists you keep, apps that may be asked to quit and what is never closed, now add from a searchable list of your apps with their icons, the same one Settings uses. <!-- wn: open=guard icon=shield.lefthalf.filled title="Memory Guard Tabs and Lists" -->
+- The sidebar button is a plain toolbar button again, without a grey fill while the sidebar is shown, so it looks right in light and dark mode. <!-- wn: open=- icon=sidebar.leading -->
 
 ## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
 <!-- wn: released=2026-11-14 -->

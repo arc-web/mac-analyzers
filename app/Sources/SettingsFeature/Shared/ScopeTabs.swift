@@ -51,17 +51,25 @@ where Value.RawValue == String {
         // Top of the stack by construction: a screen with something pushed over it publishes no
         // commands, so no screen can forget `isActive`.
         let isActive = isActive && navigator.path.count == depth && items.count >= 2
+        // A click is remembered at the moment it is made, not later from `onChange`: a screen whose tabs each show
+        // their own view (Memory Guard) puts this bar inside every one of them, so the view that was clicked is
+        // gone before its `onChange` runs, and the new one would restore the old tab when it appears.
+        let screen = screen
+        let selection = Binding(get: { self.selection }, set: { value in
+            ScopeTabMemory.write(screen, value.rawValue)
+            self.selection = value
+        })
         return content
             .safeAreaBar(edge: .top, spacing: 0) {
                 if items.count >= 2 {
-                    ScopeTabs(selection: $selection, items: items)
+                    ScopeTabs(selection: selection, items: items)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .barMargin()
                 }
             }
             .focusedSceneValue(\.scopeTabs, isActive ? ScopeTabsCommands(
                 titles: items.map(\.title),
-                select: { index in if items.indices.contains(index) { selection = items[index].value } }) : nil)
+                select: { index in if items.indices.contains(index) { selection.wrappedValue = items[index].value } }) : nil)
             .scopeTabMemory(key: screen, selection: $selection, items: items)
     }
 }

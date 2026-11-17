@@ -86,7 +86,7 @@ reports.
 ## Install
 
 The scripts are the **engine**; the app is the **face**. Mac Analyzers needs
-**macOS 26 or later** and is built on your Mac from source, which takes three
+**macOS 27 or later** and is built on your Mac from source, which takes three
 steps:
 
 1. Install Apple's **free Command Line Tools** (no Xcode needed). In
@@ -349,7 +349,7 @@ lives.
 ## The app
 
 `app/` is **Mac Analyzers**, a native SwiftUI Mac app (SPM package, Swift 6,
-macOS 26) — the face on the script engine. Every screen reads the same way:
+macOS 27) — the face on the script engine. Every screen reads the same way:
 the kinds of thing it shows are tabs with a count, rows are grouped under
 the app, project or day they belong to with a total, and a group opens to
 show what is in it.

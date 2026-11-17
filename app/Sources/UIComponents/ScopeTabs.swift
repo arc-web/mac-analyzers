@@ -204,7 +204,7 @@ where Value.RawValue == String {
 public enum ScopeTabMemory {
     private static func key(_ screen: String) -> String { "scopeTab.\(screen)" }
     static func read(_ screen: String) -> String? { UserDefaults.standard.string(forKey: key(screen)) }
-    static func write(_ screen: String, _ raw: String) { UserDefaults.standard.set(raw, forKey: key(screen)) }
+    public static func write(_ screen: String, _ raw: String) { UserDefaults.standard.set(raw, forKey: key(screen)) }
     /// A deep link to a category: a screen already showing it switches at once (it observes
     /// `selected`); one that is not reads the memory when it appears.
     public static func select(_ raw: String, in screen: String) {

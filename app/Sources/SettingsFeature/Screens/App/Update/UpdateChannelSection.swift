@@ -1,5 +1,6 @@
 import SwiftUI
 import AnalyzersKit
+import UIComponents
 
 /// The channel part of the Updates screen: which channel this copy follows (a segmented picker, shown
 /// when there is more than one to choose from) and, for Beta and This Copy, what that channel found. Releases
@@ -11,11 +12,8 @@ struct UpdateChannelSection: View {
     var body: some View {
         Section {
             if updates.channels.count > 1 {
-                Picker(Names.Channel.heading, selection: $updates.channel) {
-                    ForEach(updates.channels) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .help("Releases: the newest published version. Beta: the newest commit on the development branch. This Copy: your own clone, uncommitted changes included.")
+                FullWidthSegments(options: updates.channels.map { ($0, $0.title) }, selection: $updates.channel,
+                                  help: "Releases: the newest published version. Beta: the newest commit on the development branch. This Copy: your own clone, uncommitted changes included.")
             } else {
                 Text(Names.ChannelText.notAClone)
                     .font(.caption)

@@ -7,8 +7,8 @@ import UIComponents
 /// now), what nothing may touch right now, and the two lists the person keeps.
 struct GuardPlanTab: View {
     let model: GuardRulesModel
+    /// The list whose Add sheet is open.
     @State private var adding: Names.GuardList?
-    @State private var addedName = ""
 
     var body: some View {
         DataScreen(title: Names.Screen.memoryGuard, subtitle: subtitle) {
@@ -30,12 +30,15 @@ struct GuardPlanTab: View {
                 } header: { Text(Names.Guard.protectedNow) } footer: {
                     Text("What a live coding session started, a Connection Tool, the app in front and what you listed below is never stopped, whatever a rule says.")
                 }
-                list(.mayQuit, Names.Guard.mayQuitList, "Apps you list here may be asked to quit, as ⌘Q does, only when memory has run out. None is listed.",
-                     choices: model.groups.filter { $0.category == .apps }.map(\.name))
-                list(.neverClose, Names.Guard.neverCloseList, "Memory Guard and the cleanups that sweep developer tools and leftover helpers never touch what is listed here: a name of an app or program, or the full path of a program. Quitting apps by name in Memory Cleanup is your own choice and is not checked against this list.",
-                     choices: model.groups.filter { $0.category != .system }.map(\.name))
+                list(.mayQuit, Names.Guard.mayQuitList, "Apps you list here may be asked to quit, as ⌘Q does, only when memory has run out. None is listed.")
+                list(.neverClose, Names.Guard.neverCloseList, "Memory Guard and the cleanups that sweep developer tools and leftover helpers never touch what is listed here: a name of an app or program, or the full path of a program. Quitting apps by name in Memory Cleanup is your own choice and is not checked against this list.")
             }
             .formStyle(.grouped)
+        }
+        .appPicker(isPresented: Binding(get: { adding != nil }, set: { if !$0 { adding = nil } }),
+                   mode: adding == .neverClose ? .processFragments : .installedApps,
+                   existing: adding.map(entries) ?? []) { name in
+            if let kind = adding, !entries(kind).contains(name) { model.add(kind, name) }
         }
         .toolbar {
             ToolbarItem {
@@ -91,19 +94,22 @@ struct GuardPlanTab: View {
             .map { ($0.name, $0.why, $0.symbol) }
     }
 
-    @ViewBuilder private func list(_ kind: Names.GuardList, _ title: String, _ footer: String, choices: [String]) -> some View {
-        let entries = kind == .mayQuit ? model.rules.local.mayQuit : model.rules.local.neverClose
+    private func entries(_ kind: Names.GuardList) -> [String] {
+        kind == .mayQuit ? model.rules.local.mayQuit : model.rules.local.neverClose
+    }
+
+    @ViewBuilder private func list(_ kind: Names.GuardList, _ title: String, _ footer: String) -> some View {
         Section {
-            ForEach(entries, id: \.self) { name in
-                LabeledContent(name) {
+            ForEach(entries(kind), id: \.self) { name in
+                LabeledContent {
                     Button("Remove", systemImage: "minus.circle") { model.remove(kind, name) }.labelStyle(.iconOnly).buttonStyle(.borderless)
+                        .help("Remove \(name) from this list")
+                } label: {
+                    AppNameLabel(name: name, mode: kind == .mayQuit ? .installedApps : .processFragments)
                 }
             }
-            Menu("Add…", systemImage: "plus") {
-                ForEach(Array(Set(choices)).sorted().filter { !entries.contains($0) }.prefix(40), id: \.self) { name in
-                    Button(name) { model.add(kind, name) }
-                }
-            }
+            Button("Add…", systemImage: "plus") { adding = kind }
+                .help(kind == .mayQuit ? "Choose an installed app" : "Choose a running program or app, or type a name or path")
         } header: { Text(title) } footer: { Text(footer) }
     }
 }

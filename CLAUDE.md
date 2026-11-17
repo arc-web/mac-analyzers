@@ -2,7 +2,7 @@
 
 Shell-script toolkit (bash, macOS-only, no dependencies — every script MUST
 run under the bash macOS ships, `/bin/bash` 3.2; see the bash rule below) plus one compiled
-part: the SwiftUI menu-bar app in `app/` (SPM, Swift 6, macOS 26).
+part: the SwiftUI menu-bar app in `app/` (SPM, Swift 6, macOS 27).
 Read `CONTRIBUTING.md` first — its **safety invariants are hard rules**:
 analyzers read-only, cleaners dry-run by default when run by hand (the scheduled
 launchd jobs pass `--apply` and act by themselves), guard kills dev-tooling only,

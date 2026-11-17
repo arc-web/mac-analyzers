@@ -33,12 +33,8 @@ public struct AppListEditor: View {
             Text(title).font(.subheadline.weight(.medium))
             List(selection: $selection) {
                 ForEach(items, id: \.self) { item in
-                    HStack(spacing: Tokens.Space.s) {
-                        itemIcon(item)
-                            .accessibilityHidden(true)  // decorative — the name text is the identity
-                        Text(item)
-                    }
-                    .tag(item)
+                    AppNameLabel(name: item, mode: mode)
+                        .tag(item)
                 }
             }
             // FIXED height: the list scrolls WITHIN itself instead of
@@ -59,21 +55,38 @@ public struct AppListEditor: View {
                 Spacer()
             }
         }
-        .sheet(isPresented: $showPicker) {
-            AppPickerSheet(mode: mode, existing: items) { picked in
-                if !items.contains(picked) { items.append(picked) }
-            }
+        .appPicker(isPresented: $showPicker, mode: mode, existing: items) { picked in
+            if !items.contains(picked) { items.append(picked) }
+        }
+    }
+}
+
+/// A name in an app list with the app's own icon when an installed app has that name, otherwise a symbol for an app or a
+/// program: what every list of apps and program names shows on its rows.
+public struct AppNameLabel: View {
+    let name: String
+    let mode: AppListEditor.Mode
+
+    public init(name: String, mode: AppListEditor.Mode) {
+        self.name = name
+        self.mode = mode
+    }
+
+    public var body: some View {
+        HStack(spacing: Tokens.Space.s) {
+            icon
+                .accessibilityHidden(true)  // decorative — the name text is the identity
+            Text(name)
         }
     }
 
-    @ViewBuilder private func itemIcon(_ item: String) -> some View {
-        if let app = Self.installedByName[item.lowercased()] {
-            Image(nsImage: iconFor(path: app.path))
+    @ViewBuilder private var icon: some View {
+        if let app = Self.installedByName[name.lowercased()] {
+            Image(nsImage: Self.icon(path: app.path))
                 .resizable()
                 .frame(width: 16, height: 16)
         } else {
-            IconTile(symbol: mode == .installedApps ? "app.dashed" : "terminal.fill",
-                     color: .gray)
+            IconTile(symbol: mode == .installedApps ? "app.dashed" : "terminal.fill", color: .gray)
         }
     }
 
@@ -81,10 +94,21 @@ public struct AppListEditor: View {
         Dictionary(AppCatalog.installedApps().map { ($0.name.lowercased(), $0) },
                    uniquingKeysWith: { first, _ in first })
 
-    private func iconFor(path: String) -> NSImage {
+    private static func icon(path: String) -> NSImage {
         let icon = NSWorkspace.shared.icon(forFile: path)
         icon.size = NSSize(width: 16, height: 16)
         return icon
+    }
+}
+
+public extension View {
+    /// The searchable Add sheet of `AppListEditor`, for a list kept somewhere else: installed apps (or, for program names,
+    /// what is running now) with their icons, a search field, and a field for a name that is not listed.
+    func appPicker(isPresented: Binding<Bool>, mode: AppListEditor.Mode, existing: [String],
+                   onPick: @escaping (String) -> Void) -> some View {
+        sheet(isPresented: isPresented) {
+            AppPickerSheet(mode: mode, existing: existing, onPick: onPick)
+        }
     }
 }
 

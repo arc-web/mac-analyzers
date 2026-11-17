@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.4
 // MacAnalyzers.app — menu-bar UI + notifier for the mac-analyzers suite.
 // Decomposed catalog-style: features import kits, the app target stays thin.
 // Built WITHOUT Xcode: `./build.sh` (swift build + hand-assembled bundle).
@@ -33,7 +33,7 @@ let strictC: [CSetting] = relaxed ? [] : [.treatAllWarnings(as: .error)]
 
 let package = Package(
     name: "MacAnalyzers",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS(.v27)],
     dependencies: proPackageDependencies,
     targets: [
         // app shell (thin @main: scenes + DI)

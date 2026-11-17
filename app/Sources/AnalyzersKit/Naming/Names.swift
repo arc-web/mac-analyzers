@@ -69,6 +69,9 @@ public enum Names {
         public static let hide = "Hide Sidebar"
         public static let enterFullScreen = "Enter Full Screen"
         public static let exitFullScreen = "Exit Full Screen"
+        // what VoiceOver hears as the sidebar button's value
+        public static let shownValue = "Shown"
+        public static let hiddenValue = "Hidden"
     }
 
     // MARK: - screens (the sidebar rows, and the title of the screen each opens)

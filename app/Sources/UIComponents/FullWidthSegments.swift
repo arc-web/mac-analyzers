@@ -7,10 +7,12 @@ import SwiftUI
 /// appearance.
 public struct FullWidthSegments<Option: Hashable>: View {
     let options: [(Option, String)]
+    let help: String?
     @Binding var selection: Option
 
-    public init(options: [(Option, String)], selection: Binding<Option>) {
+    public init(options: [(Option, String)], selection: Binding<Option>, help: String? = nil) {
         self.options = options
+        self.help = help
         self._selection = selection
     }
 
@@ -22,6 +24,9 @@ public struct FullWidthSegments<Option: Hashable>: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+        // the segments themselves share the width; a frame alone centres a narrow control in a wide row
+        .buttonSizing(.flexible)
         .frame(maxWidth: .infinity)
+        .help(help ?? "")
     }
 }
