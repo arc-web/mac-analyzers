@@ -52,14 +52,14 @@ enum StorageGroup {
     static let group = SidebarGroup(
         title: Names.Group.storage,
         rows: [
-            SidebarRow(disk, Names.Screen.disk, symbol: "internaldrive"),
-            SidebarRow(caches, Names.Screen.cachesAndBuilds, symbol: "shippingbox"),
-            SidebarRow(downloads, Names.Screen.downloads, symbol: "arrow.down.circle"),
-            SidebarRow(temp, Names.Screen.tempAndAgents, symbol: "tray.full"),
-            SidebarRow(timeMachine, Names.Screen.timeMachine, symbol: "clock.arrow.circlepath"),
-            SidebarRow(spotlight, Names.Screen.spotlight, symbol: "magnifyingglass"),
-            SidebarRow(unused, Names.Screen.unusedApps, symbol: "app.badge.checkmark"),
-            SidebarRow(recordings, Names.Screen.oldRecordings, symbol: "film"),
+            SidebarRow(disk, Names.Screen.disk, symbol: "internaldrive", tint: .indigo),
+            SidebarRow(caches, Names.Screen.cachesAndBuilds, symbol: "shippingbox", tint: .indigo),
+            SidebarRow(downloads, Names.Screen.downloads, symbol: "arrow.down.circle", tint: .indigo),
+            SidebarRow(temp, Names.Screen.tempAndAgents, symbol: "tray.full", tint: .indigo),
+            SidebarRow(timeMachine, Names.Screen.timeMachine, symbol: "clock.arrow.circlepath", tint: .indigo),
+            SidebarRow(spotlight, Names.Screen.spotlight, symbol: "magnifyingglass", tint: .indigo),
+            SidebarRow(unused, Names.Screen.unusedApps, symbol: "app.badge.checkmark", tint: .indigo),
+            SidebarRow(recordings, Names.Screen.oldRecordings, symbol: "film", tint: .indigo),
         ],
         root: screen,
         aliases: [

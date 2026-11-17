@@ -1,4 +1,5 @@
 import SwiftUI
+import UIComponents
 #if canImport(ProKit)
 import ProKit
 #endif
@@ -52,7 +53,13 @@ struct SidebarView: View {
     @ViewBuilder
     private func rows(_ group: SidebarGroup) -> some View {
         ForEach(group.rows) { row in
-            Label(row.title, systemImage: row.symbol)
+            // The system draws no colour for a sidebar glyph in this app (`.listItemTint` with `.preferred` or `.fixed`
+            // renders grey, checked off-screen on macOS 27), so the icon is the shared tile.
+            Label {
+                Text(row.title)
+            } icon: {
+                IconTile(symbol: row.symbol, color: row.tint, side: Tokens.Icon.row)
+            }
                 .badge(row.badge?().map { Text($0) })
                 .tag(row.section)
         }
