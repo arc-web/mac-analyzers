@@ -13,7 +13,7 @@ struct UpdateChannelSection: View {
         Section {
             if updates.channels.count > 1 {
                 FullWidthSegments(options: updates.channels.map { ($0, $0.title) }, selection: $updates.channel,
-                                  help: "Releases: the newest published version. Beta: the newest commit on the development branch. This Copy: your own clone, uncommitted changes included.")
+                                  help: "Releases: the newest published release. Beta: the newest pre-release, published ahead of the next release (a release newer than it is offered too). This Copy: your own clone, uncommitted changes included.")
             } else {
                 Text(Names.ChannelText.notAClone)
                     .font(.caption)
@@ -33,15 +33,15 @@ struct UpdateChannelRows: View {
         case .releases:
             EmptyView()
         case .beta:
-            LabeledContent("Newest Beta") {
-                Text(updates.newestBeta ?? (checking ? "Checking…" : "—"))
+            LabeledContent(Names.Channel.newestBeta) {
+                Text(updates.newestBeta ?? (checking ? "Checking…" : "None Yet"))
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             }
-            .help("The newest commit on the development branch on GitHub")
+            .help("The newest beta published on GitHub: a pre-release of the next version")
             stateLabel
             if updates.cloneDirty == true {
-                Label("Your clone has changes that are not committed yet. Updating pulls the newest commit and builds those changes in too.",
+                Label("Your clone has changes that are not committed yet. Updating moves your clone to the newest beta and builds those changes in too.",
                       systemImage: "info.circle")
                     .foregroundStyle(.secondary)
             }
@@ -69,7 +69,7 @@ struct UpdateChannelRows: View {
             switch state {
             case .upToDate:
                 Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-            case .behind, .differs:
+            case .behind, .differs, .offered:
                 Label(text, systemImage: "exclamationmark.circle.fill").foregroundStyle(.orange)
             case .ahead:
                 Label(text, systemImage: "hammer.fill").foregroundStyle(.blue)

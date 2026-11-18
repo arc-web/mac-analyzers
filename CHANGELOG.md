@@ -17,6 +17,9 @@ The screen is a deep-link name such as `monitor`, `trends` or `recordings`
 title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
+- Updates now has a real Beta channel, like a beta you subscribe to in TestFlight. Beta follows the newest pre-release published on GitHub, and offers the release itself once it ships. Versions read short everywhere: a release is `2.72.0`, a beta is `2.72.1 Beta`, and a copy you built yourself is `Dev · 8e2c9b0`. <!-- wn: open=update icon=arrow.triangle.2.circlepath title="Release and Beta Channels" -->
+- What's New now sits on the Updates screen, right under the update controls, and follows the channel you pick: Releases lists the published releases, Beta adds the newest beta, and This Copy adds what your clone has that is not released yet. Each card shows its title, version, number of new features and date. Open a release to see its features grouped by screen, and a feature to read about it. <!-- wn: open=updates:whatsNew icon=sparkles title="What's New by Release" -->
+
 ## v2.73.0 — Stop what you own, a Mac Analyzers screen, and worktrees that are never removed
 <!-- wn: released=2026-11-18 -->
 

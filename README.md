@@ -195,11 +195,14 @@ cd ~/mac-analyzers && ./upgrade.command
 follow one of three channels:
 
 - **Releases** (the default) — finished releases only.
-- **Beta** — the newest work being developed, before it is released. It is
-  offered only when your clone is on the development branch; to switch,
-  run `git -C ~/mac-analyzers checkout development` and then
-  `upgrade.command`. Install pulls the newest development version and
-  rebuilds.
+- **Beta** — the newest pre-release, like a beta you subscribe to in
+  TestFlight: a version published on GitHub ahead of the next release, named
+  for the release it leads to (for example `2.72.1 Beta`, then
+  `2.72.1 Beta 2`). When the release of that version comes out, Beta offers
+  the release. When no beta is out, the screen says so and Beta offers each
+  new release. It is offered only when your clone is on the development
+  branch; to switch, run `git -C ~/mac-analyzers checkout development`.
+  Install moves your clone to that beta and rebuilds (`beta.command`).
 - **This Copy** — your clone exactly as it is now, including changes you
   have not committed. "Rebuild from This Copy" runs `rebuild.command`, the
   same build without pulling anything.
@@ -208,13 +211,12 @@ Each channel says how far behind your installed copy is. Reading your clone
 never runs anything the clone itself names, and nothing is fetched into it
 without you pressing a button.
 
-**Development versions.** A copy built from work that is not released yet
-does not claim the last release's number. It is named for the release it is
-heading toward plus a development number — for example `2.70.1-dev.12` in
-the sidebar — and the Updates screen shows the full name, the commit it was
-built from and whether it includes uncommitted changes. It is never offered
-the release it is already past, and is offered the next real one when it
-comes out.
+**What a version is called.** A release is just its number, `2.72.0`. A
+beta is the number it leads to and `Beta`, for example `2.72.1 Beta`. A copy
+you built yourself from work that is not published is `Dev · 8e2c9b0`: Dev and
+the short name of the commit it came from, with a `*` after it when it includes
+changes you have not committed. A beta is never offered on Releases, and a
+Dev copy is never offered something it is already past.
 
 Not using git? Unpack the source tarball from the
 [Releases page](https://github.com/hrconsultnj/mac-analyzers/releases) in your
@@ -230,11 +232,11 @@ network requests the app makes:
 
 - **The release check** — on launch and every 6 hours, one public request to
   GitHub's list of releases.
-- **The Beta channel**, only if you chose it — every 6 hours, a GitHub
-  request that compares the commit your copy was built from with the
-  development branch, and a read of development's changelog.
-- **Install** — when you press it, `upgrade.command` pulls the new version
-  from GitHub.
+- **The Beta and This Copy channels**, only if you chose one — every 6 hours, a GitHub
+  request for the list of published pre-releases, and a read of the
+  changelog of the newest one.
+- **Install** — when you press it, `upgrade.command` (or `beta.command` on
+  Beta) fetches the new version from GitHub.
 
 ## What's inside
 

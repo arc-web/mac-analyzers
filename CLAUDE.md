@@ -500,9 +500,16 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   pull requests check the text rules and say the rest was not run). The sidebar
   card that announces the newest unseen release is `whatsNew.seenVersion` in the
   defaults (never on a development build or a first launch); render it with
-  `snapshot-runner sidebar:whatsNewCard out.png`, and What's New with
-  `updates:whatsNew`, `updates:whatsNew:latest` and `updates:whatsNew:<version>`
-  (`MA_CHANGELOG=app/Fixtures/whats-new.md` for stand-in releases).
+  `snapshot-runner sidebar:whatsNewCard out.png`. What's New is the list on the
+  Updates screen itself, under the channel picker (`UpdateSettingsView`; no screen or row of its
+  own), and it follows the channel: `WhatsNewSource` / `ReleaseNote.channelNotes` give Releases the
+  published releases, Beta those plus the newest published beta past the newest release (a card named by
+  `BuildInfo.label`, its notes the `## Next` at that beta's tag), and This Copy those plus a "Not Released
+  Yet" card from the clone's own `## Next` (a Dev or beta build also keeps the notes it holds; on This Copy the beta's card is read only when the clone is on `development`); a card pushes its release (`WhatsNewReleaseScreen`), a feature
+  its detail. The links are `updates:whatsNew` (Updates, scrolled to the list), `updates:whatsNew:latest`
+  and `updates:whatsNew:<version>`; render them with
+  `snapshot-runner update out.png --update-state <uptodate|beta-behind|beta-none|copy-behind|…>` and
+  `MA_CHANGELOG=app/Fixtures/whats-new.md` for stand-in releases.
 - Installed clones update via `./upgrade.command` (Finder double-clickable):
   `git pull --ff-only` → `app/build.sh` (reinstalls to /Applications) → both
   `*-manage-agents.sh install` → relaunch the app (prefers the /Applications
@@ -512,11 +519,7 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   installed vs latest and run `upgrade.command` on Install.
   A copy built from a git clone can also follow an update channel, picked on
   the Updates screen (`UpdateChannel`, saved in defaults): **Releases** (the
-  default, as above), **Beta** (the newest commit on `development`, read with
-  two public GitHub requests, a compare of the commit this copy was built from
-  and the changelog on `development`; Install is `upgrade.command`, a `git pull
-  --ff-only` on development plus a rebuild; only offered when the clone is on
-  `development`) and **This Copy** (the clone itself, uncommitted changes
+  default, as above), **Beta** (the newest GitHub pre-release, tag `vX.Y.Z-beta.N`, or a newer release; one public request for the releases list and the changelog at that tag; Install is `beta.command`, which moves a clone on `development` forward to the newest PUBLISHED version's tag (a tag counts only when GitHub has a release for it; a release newer than the beta wins; never the development tip; a clone already past it is refused) and rebuilds; cut with `scripts/cut-beta.sh`, which makes the tag and the pre-release in one step so one never exists without the other; a Dev copy is offered the newest beta when its commit does not hold that beta's, asked of GitHub's compare) and **This Copy** (the clone itself, uncommitted changes
   included, read with local `git`; "Rebuild from This Copy" runs
   `rebuild.command`, the same build without the pull). The build stamps
   `MABuildCommit`, `MABuildBranch`, `MABuildTreeHash` (`scripts/tree-hash.sh`:
@@ -534,11 +537,6 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   (`GIT_NO_LAZY_FETCH`), a non-empty `.git/info/attributes` is unknown, and
   git failing makes the state "unknown". A downloaded app, or a Mac without the developer tools,
   runs no git at all (`GitTools`, so Apple's install dialog never appears) and
-  shows Releases only. A development build is never named for the release:
-  `BuildInfo.version` is the next patch, `-dev.<commits since the tag>`,
-  `+<short commit>` and `.local` (or `.unknown`) for uncommitted changes, by
-  semantic-versioning precedence (`2.69.2 < 2.69.3-dev.42 < 2.69.3`); Beta and
-  This Copy decide "newer" by commit and fingerprint, never by that string.
-  Nothing fetches into the person's clone and nothing installs by itself;
+  shows Releases only. A person reads one short name (`BuildInfo.label`): a release "2.72.0", a published beta (clean tree at a beta tag, stamp `MABuildBetaTag`) "2.72.1 Beta" / "2.72.1 Beta 2", anything else built from a clone "Dev · 8e2c9b0" (`*` for uncommitted changes). Inside, `BuildInfo.version` is the semantic-versioning string (`2.72.1-beta.2`, `2.72.1-dev.42+8e2c9b0.local`; `2.72.0 < 2.72.1-beta.1 < 2.72.1-dev.N < 2.72.1`) used only for comparison; Beta decides by that version, This Copy by commit and fingerprint. Nothing fetches into the person's clone and nothing installs by itself;
   `agent-runner --probe-channels` (including a hostile clone that writes a
   marker if anything runs) and `--probe-versions` prove it.

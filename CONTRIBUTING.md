@@ -92,6 +92,16 @@ a line under `## Next` at the top of that file — in plain sentences, for someo
 seen the code. Both branches are protected;
 code-owner review is required before merge.
 
+**Two channels, two scripts.** People follow the public release or a beta, as
+in TestFlight. `scripts/cut-release.sh` publishes a release (`vN.N.N`, from
+`main`). `scripts/cut-beta.sh` publishes a beta: it tags the current commit of
+`development` `vX.Y.Z-beta.N` (X.Y.Z is the next version after the latest
+release; N counts up) and creates a GitHub pre-release with the `## Next`
+notes. It never touches `main` or `VERSION`, and GitHub never offers a
+pre-release as the latest release, so only the Beta channel sees it. Rehearse
+with `scripts/cut-beta.sh --dry-run`. A beta tag is never counted as a release
+(`app/release-tag.sh` ignores every tag with a `-`).
+
 - **App/UI PRs** (`app/`): describe what changed visually — a screenshot of
   the affected menu tab or settings pane beats a paragraph — and confirm
   `cd app && swift build` is green.
