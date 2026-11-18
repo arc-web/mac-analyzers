@@ -16,7 +16,9 @@ struct SidebarView: View {
     var body: some View {
         List(selection: selection) {
             ForEach(Array(SectionRegistry.groups.enumerated()), id: \.offset) { _, group in
-                if let title = group.title {
+                if group.rows.contains(where: \.inSidebar) == false {
+                    EmptyView()
+                } else if let title = group.title {
                     Section(title) { rows(group) }
                 } else {
                     Section { rows(group) }
@@ -52,7 +54,7 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func rows(_ group: SidebarGroup) -> some View {
-        ForEach(group.rows) { row in
+        ForEach(group.rows.filter(\.inSidebar)) { row in
             // The system draws no colour for a sidebar glyph in this app (`.listItemTint` with `.preferred` or `.fixed`
             // renders grey, checked off-screen on macOS 27), so the icon is the shared tile.
             Label {
