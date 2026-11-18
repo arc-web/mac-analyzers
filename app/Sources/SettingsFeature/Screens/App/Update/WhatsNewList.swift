@@ -10,21 +10,36 @@ enum WhatsNewFilter: String, CaseIterable, Identifiable {
     var symbol: String { self == .all ? "clock.arrow.circlepath" : "sparkles" }
 }
 
-/// Where the notes behind What's New come from, shared by the list and each feature's screen so both read the
-/// same releases (and the same cached load).
+/// Where the notes behind What's New come from, shared by the list and each release's and feature's screen so all read the
+/// same releases.
+///
+/// Parsing the changelog takes a fraction of a second, so it does not go through the shared load queue
+/// (`awaitLoad`): that queue runs one expensive read at a time (Overview's trends, the process table) and What's
+/// New used to wait behind whatever was running, seconds on the first open after launch. It is read off the main
+/// thread, once for each channel, changelog text and modification date of the bundled file, and kept.
 @MainActor
 enum WhatsNewSource {
+    private struct Key: Hashable {
+        let channel: UpdateChannel
+        let includeNext: Bool
+        let channelText: Int
+        let stamp: Date?
+    }
+    private static var cache: [Key: [ReleaseNote]] = [:]
+
     static func notes(updates: UpdateState) async -> [ReleaseNote] {
         let channel = updates.channel
         let channelText = updates.channelChangelog
         // Beta and This Copy read the unreleased section from THEIR changelog (development's, or the
         // clone's with its uncommitted edits); the releases below are the bundled ones.
         let includeNext = channel == .releases && updates.build.isDevelopment
-        // keyed by what the notes are made of: the channel, whether the unreleased part is in, and the text itself
-        var result: [ReleaseNote] = []
-        await awaitLoad({ ReleaseNote.channelNotes(channel: channel, changelog: channelText, includeNext: includeNext) },
-                        key: "update.notes.\(channel).\(includeNext).\(channelText.hashValue)") { result = $0 }
-        return result
+        let key = Key(channel: channel, includeNext: includeNext, channelText: channelText.hashValue, stamp: ReleaseNote.changelogStamp)
+        if let hit = cache[key] { return hit }
+        let parsed = await Task.detached(priority: .userInitiated) {
+            ReleaseNote.channelNotes(channel: channel, changelog: channelText, includeNext: includeNext)
+        }.value
+        cache[key] = parsed
+        return parsed
     }
 }
 

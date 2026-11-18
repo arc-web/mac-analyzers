@@ -19,15 +19,22 @@ struct HubArea: Identifiable {
 /// `PaneScaffold`'s header, never above it in the toolbar's backdrop.
 struct HubHeader: View {
     @Environment(Navigator.self) private var navigator
-    let symbol: String
-    let color: Color
+    var symbol = ""
+    var color = Color.clear
     let title: String
     let caption: String
     var areas: [HubArea] = []
+    /// The app's own icon in place of the tile, and a line under the title (its version): the app's screen.
+    var logo: Image?
+    var detail: String?
 
     var body: some View {
         VStack(spacing: Tokens.Space.xxl) {
-            PaneHeader(symbol: symbol, color: color, title: title, caption: caption)
+            if let logo {
+                PaneHeader(logo: logo, title: title, detail: detail, caption: caption)
+            } else {
+                PaneHeader(symbol: symbol, color: color, title: title, caption: caption)
+            }
             if !areas.isEmpty {
                 GroupBox {
                     VStack(spacing: 0) {

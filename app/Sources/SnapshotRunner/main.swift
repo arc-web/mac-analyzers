@@ -65,7 +65,9 @@ if arguments.first == "--probe-links" {
     let overview = ["disk:capacity": "disk", "caches:projects": "caches", "monitor": "monitor", "monitor:select:Opera": "monitor",
                     "trends": "trends", "trends:storage": "trends", "trends:memory": "trends", "undo": "undo",
                     "undo:servers": "undo", "undo:opened": "undo", "logs": "activity", "schedule": "prefsSchedule",
-                    "update": "updates", "log:guardLog": "memoryGuard", "setup": "setup"]
+                    "update": "updates", "log:guardLog": "memoryGuard", "setup": "setup",
+                    "app": "app", "about": "howItWorks", "howItWorks": "howItWorks", "support": "support",
+                    "updates:whatsNew": "updates", "updates:whatsNew:latest": "updates"]
     for (target, section) in overview.sorted(by: { $0.key < $1.key }) {
         let landed = DeepLinkRouter.probeRouting(of: target)
         let ok = landed.contains("\"\(section)\"") && !landed.contains("unknown")

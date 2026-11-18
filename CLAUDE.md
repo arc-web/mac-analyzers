@@ -113,6 +113,12 @@ through `config.local.sh` (never hardcoded).
   one line, then its nested areas as rows that open them through the `Navigator`) as the
   first item INSIDE its scroll content; a screen that is a table, a list or a review
   (Monitor, Activity, Guard, a run) never has one and starts with its data.
+  The app-level screens (Updates, What's New, How It Works, Support) have no sidebar rows
+  (`SidebarRow(inSidebar: false)` keeps the row for names and icons): the item at the foot of
+  the sidebar (`Shell/SidebarVersionItem.swift`) opens the Mac Analyzers screen
+  (`Screens/App/AppHomeView.swift`, deep link `app`), a hub that leads to them, and shows as
+  selected on all of them (`AppGroup.sections`). What's New is one card per release
+  (`WhatsNewReleasesView`), each pushing `WhatsNewReleaseScreen`.
   A sidebar row's icon is the shared `IconTile` in its section's system colour
   (`SidebarRow.tint`, one colour per group: system colours that follow the user's accent
   and light or dark, never a hex value). `.listItemTint` was tried first and the system
