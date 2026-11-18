@@ -7,26 +7,18 @@ without an entry here — see `scripts/cut-release.sh`. The app lists each
 bullet as a feature of its own, so every bullet ends with a short tag that
 GitHub does not show; `scripts/changelog-check.sh` says what it must hold.
 
-## Next
-
-Notes for the release being worked on collect here. When it ships, this
-heading becomes its version and title, and this note is deleted. Every bullet
-ends with one tag after its last word, written exactly like this one: `<!-- wn: open=guard icon=shield.lefthalf.filled title="Short Title" -->`.
-The screen is a deep-link name such as `monitor`, `trends` or `recordings`
-(`-` for a change across the whole app), the icon is an SF Symbol, and the
-title is optional. One screen per bullet: a change that touches two screens
-is two bullets. The release date is added when the release is cut.
+## v2.73.0 — Stop what you own, a Mac Analyzers screen, and worktrees that are never removed
 
 - Updates, What's New, How It Works and Support no longer take rows in the sidebar. The Mac Analyzers item at the bottom, now showing the app's icon, its name and whether it is up to date, opens a screen about the app with all four, and stays highlighted on each of them. <!-- wn: open=app icon=macwindow title="The Mac Analyzers Screen" -->
 - What's New lists one card per release, with its title, version, number of new features and date. Open a release to see its features grouped by screen, and a feature to read about it. <!-- wn: open=updates:whatsNew icon=sparkles title="What's New by Release" -->
 - The sidebar's icons are in colour again, one colour for each section, in light and dark mode. <!-- wn: open=- icon=sidebar.leading title="Coloured Sidebar Icons" -->
 - Overview and Disk open with a header that says where you are: an icon, the name, one line about it, and Overview lists the screens it summarizes so each is one click away. <!-- wn: open=overview icon=gauge.with.dots.needle.33percent title="Headers on Overview and Disk" -->
 - Settings › Storage is grouped by what each setting controls: build caches, tool caches, code projects, git worktrees, apps and recordings, Downloads and backups. Every setting has a short explanation under it. Nothing about what the cleans do has changed. <!-- wn: open=storage icon=internaldrive.fill title="Storage Settings, Reorganized" -->
-- The deep clean no longer removes git worktrees. For a worktree that has been idle, it now clears only the build output git ignores, such as node_modules, .next and dist. The worktree, its source files and local files like an .env always stay. A worktree with uncommitted changes is never touched, and neither is anything inside an agent's .composure/workspaces folder. Build folders a project commits to git, or that sit outside any git project, are never removed by any clean. <!-- wn: open=caches icon=hammer title="Worktrees Are Never Removed" -->
+- The deep clean no longer removes git worktrees. For a worktree that has been idle, it now clears only build output that git ignores, such as downloaded packages and compiled files. The worktree, its source files and local files like an .env always stay. A worktree with uncommitted changes is never touched, and neither is anything inside an agent's .composure/workspaces folder. Build folders a project commits to git, or that sit outside any git project, are never removed by any clean. <!-- wn: open=caches icon=hammer title="Worktrees Are Never Removed" -->
 - Mac Analyzers now requires macOS 27. <!-- wn: open=- icon=macwindow title="Requires macOS 27" -->
 - Memory Guard's Apps, Tools and macOS tabs switch when you click them again. The two lists you keep, apps that may be asked to quit and what is never closed, now add from a searchable list of your apps with their icons, the same one Settings uses. <!-- wn: open=guard icon=shield.lefthalf.filled title="Memory Guard Tabs and Lists" -->
 - The sidebar button is a plain toolbar button again, without a grey fill while the sidebar is shown, so it looks right in light and dark mode. <!-- wn: open=- icon=sidebar.leading -->
-- You can now stop anything you own from Monitor. A lock used to hide Stop on a program that belongs to a live coding session, on a group such as an npm task, and on an emulator started from one. Now those rows have Stop, and a group of protected programs lets you stop them all or open it and stop one. Before it does anything, the confirmation says why Memory Guard and the cleanups never stop it by themselves and what you could lose, and the button reads Stop Anyway. Other accounts' and macOS's own processes still can't be stopped from here, and the row says why. <!-- wn: open=monitor icon=xmark.octagon title="Stop Anything You Own" -->
+- You can now stop anything you own from Monitor, including a program that belongs to a live coding session, a group such as an npm task, and an emulator started from one. Protected rows keep their lock, which now means that Memory Guard and the cleanups never stop them by themselves: point at the lock, or move to it with the keyboard, and it becomes Stop or Quit. Its tooltip and the details panel say why the row is protected, and How It Works explains every reason. Before anything happens, the confirmation names the reason and what you could lose, and Force Stop is a separate second step. Other accounts' processes, macOS's own, Terminal sessions and Mac Analyzers itself still can't be stopped from here, and the row says why. <!-- wn: open=monitor icon=xmark.octagon title="Stop Anything You Own" -->
 
 ## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
 <!-- wn: released=2026-11-14 -->
