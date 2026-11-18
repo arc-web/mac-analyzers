@@ -40,7 +40,13 @@ enum ProbeFit {
         func verdict(_ good: Bool, _ text: String) { say((good ? "PASS " : "FAIL ") + text); if !good { ok = false } }
         func at(_ width: CGFloat) -> NSOutlineView? {
             window.setContentSize(NSSize(width: width, height: 500))
-            _ = settle(); spin(0.4); _ = settle()
+            _ = settle()
+            // the resize's layout is done when the table's columns and width stop changing
+            waitStable {
+                guard let table = window.contentView.flatMap(findOutline(in:)) else { return "" }
+                return "\(window.contentView?.bounds.width ?? 0) \(table.frame.width) " + table.tableColumns.map { "\($0.identifier.rawValue)\($0.isHidden)\($0.width)" }.joined()
+            }
+            _ = settle()
             let found = window.contentView.flatMap(findOutline(in:))
             if legacy, let scroll = found?.enclosingScrollView, scroll.scrollerStyle != .legacy { scroll.scrollerStyle = .legacy; _ = settle(); spin(0.3); _ = settle() }
             if let found, let clip = found.enclosingScrollView?.contentView {
@@ -83,21 +89,21 @@ enum ProbeFit {
         // a person hides one from the menu: it stays hidden through narrowing and widening
         _ = at(1100)
         if let kind = menu?.items.first(where: { $0.title == "Kind" }) { _ = kind.target?.perform(kind.action, with: kind) }
-        _ = settle(); spin(0.2)
+        _ = settle(); waitUntil { !shown(outline).contains("kind") }
         verdict(!shown(outline).contains("kind"), "a person hides Kind from the menu: \(shown(outline))")
         _ = at(560); _ = at(1100)
         verdict(!shown(outline).contains("kind") && shown(outline).contains("owner"), "a person's choice is kept when there is room again: \(shown(outline))")
         // and shows it again
         menu?.delegate?.menuNeedsUpdate?(menu!)
         if let kind = menu?.items.first(where: { $0.title == "Kind" }) { _ = kind.target?.perform(kind.action, with: kind) }
-        _ = settle(); spin(0.2)
+        _ = settle(); waitUntil { shown(outline).contains("kind") }
         verdict(shown(outline).contains("kind"), "and shows it again: \(shown(outline))")
         // sorting by a column the room hides: the sort is kept, nothing is written back, the order stays, and
         // the indicator is there when the column returns
         _ = at(1100)
         model.sortOrder = [KeyPathComparator(\ProbeRow.kind, order: .reverse)]
         model.rows.sort { $0.kind > $1.kind }
-        _ = settle(); spin(0.3)
+        _ = settle(); waitUntil { outline.sortDescriptors.first?.key == "kind" }
         let sortBefore = outline.sortDescriptors.map(\.key)
         let firstBefore = ProbeChecks.name(outline, row: 0)
         _ = at(560)
@@ -113,14 +119,17 @@ enum ProbeFit {
         _ = at(560)
         menu?.delegate?.menuNeedsUpdate?(menu!)
         if let owner = menu?.items.first(where: { $0.title == "Owner" }) { _ = owner.target?.perform(owner.action, with: owner) }
-        _ = settle(); spin(0.3)
+        _ = settle(); waitUntil { shown(outline).contains("owner") }
         verdict(shown(outline).contains("owner"), "560: a person asks for Owner although there is no room: \(shown(outline))")
         window.contentViewController = nil; window.close()
         spin(0.3)
         let again = OffscreenWindow(contentViewController: NSHostingController(rootView: Screen(model: model, autosave: autosave)))
         again.styleMask = [.titled, .resizable]
         again.placeOffscreen()
-        again.setContentSize(NSSize(width: 560, height: 500)); _ = settle(); spin(0.8); _ = settle()
+        again.setContentSize(NSSize(width: 560, height: 500)); _ = settle()
+        // the relaunched table lays out and restores the person's choice on its own turns of the loop: wait for that
+        waitUntil { again.contentView.flatMap(findOutline(in:)).map { shown($0).contains("owner") && !shown($0).contains("kind") } ?? false }
+        _ = settle()
         if let relaunched = again.contentView.flatMap(findOutline(in:)) {
             verdict(shown(relaunched).contains("owner") && !shown(relaunched).contains("kind"),
                     "after a relaunch at 560 the column a person showed is still shown (Kind went for room): \(shown(relaunched))")

@@ -60,6 +60,33 @@ func now() -> Double { ProcessInfo.processInfo.systemUptime }
 /// CPU time of this thread, in ms: what a step cost, whatever else the Mac is doing.
 func cpuMilliseconds() -> Double { Double(clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)) / 1e6 }
 
+/// Runs the loop until `condition` holds, up to `ceiling` seconds; whether it held. A probe waits on the state it is about to
+/// check, not on a timer: a fixed pause is long enough on an idle Mac and too short on a busy one, where the same
+/// check then failed and passed on the same code. The ceiling is generous, so a real failure still fails (after the wait).
+@MainActor
+@discardableResult
+func waitUntil(_ ceiling: Double = 30, _ condition: () -> Bool) -> Bool {
+    let start = now()
+    while !condition() && now() - start < ceiling {
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+    }
+    return condition()
+}
+
+/// Runs the loop until what `signature` reads has not changed for `quiet` seconds (up to `ceiling`): the layout that
+/// follows a resize has finished when nothing it produces moves any more, however long that takes on a busy Mac.
+@MainActor
+func waitStable(quiet: Double = 0.25, ceiling: Double = 30, _ signature: () -> String) {
+    let start = now()
+    var last = signature()
+    var since = now()
+    while now() - start < ceiling && now() - since < quiet {
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        let current = signature()
+        if current != last { last = current; since = now() }
+    }
+}
+
 /// Runs the loop in 1 ms slices until three in a row are idle; the wall time in ms.
 func settle(maxSeconds: Double = 20) -> Double {
     let start = now()

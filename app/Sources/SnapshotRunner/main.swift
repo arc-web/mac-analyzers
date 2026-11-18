@@ -1,7 +1,7 @@
 // snapshot-runner — render a real screen of the app to a PNG without ever
 // putting a window in front of anyone.
 //
-//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--seen <version>] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--welcome <fresh|upgraded|continuing>:<step>] [--stop-sheet] [--lock-cell]
+//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--seen <version>] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--default <key>=<value>] [--stop-sheet] [--lock-cell] [--welcome <fresh|upgraded|continuing>:<step>]
 //   snapshot-runner overview /tmp/overview.png
 //
 // <target> is any deep-link target the app understands (`monitor`, `caches`,
@@ -90,6 +90,15 @@ if arguments.first == "--probe-links" {
 if let domain = Bundle.main.bundleIdentifier ?? Optional(ProcessInfo.processInfo.processName),
    domain != "com.mac-analyzers.app" {
     UserDefaults.standard.removePersistentDomain(forName: domain)
+}
+// `--default <key>=true|false`: a remembered setting (a panel shown, a tab chosen) as it would be on a launch that
+// remembered it, written after the clear above. Repeatable.
+for (index, word) in arguments.enumerated() where word == "--default" && arguments.indices.contains(index + 1) {
+    let pair = arguments[index + 1].split(separator: "=", maxSplits: 1).map(String.init)
+    if pair.count == 2 {
+        if pair[1] == "true" || pair[1] == "false" { UserDefaults.standard.set(pair[1] == "true", forKey: pair[0]) }
+        else { UserDefaults.standard.set(pair[1], forKey: pair[0]) }
+    }
 }
 // the example screens (`review:fixture`) can be linked only in this process; this tool has no
 // app bundle, so MA_CHANGELOG names the changelog What's New shows (read HERE, never by the app)

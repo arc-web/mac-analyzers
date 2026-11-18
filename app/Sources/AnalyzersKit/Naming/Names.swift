@@ -663,7 +663,7 @@ public enum Names {
         public static let every15 = "Every 15 Seconds"
         public static let every60 = "Every 60 Seconds"
         public static let paused = "Paused"
-        public static let inspector = "Inspector"
+        public static let inspector = "Details"
         public static let showDetails = "Show Details"
         public static let whereYourMemoryIs = "Where Your Memory Is"
         public static let nothingInScope = "Nothing in This Scope"
