@@ -44,11 +44,22 @@ public enum GuardControl {
     /// process is re-checked against `identity`, the start time it had when it
     /// was listed, so a recycled pid is refused. A process listed without an
     /// identity cannot be checked, so it is refused too.
-    public static func stopProcess(_ proc: LiveProcess, identity: ProcessIdentity?) -> StopResult {
+    ///
+    /// `overridingProtection` is the person's own choice, made in a confirmation that named what protects it: a live
+    /// coding session no longer refuses it. Another account's process still does, and the start time is still checked.
+    public static func stopProcess(_ proc: LiveProcess, identity: ProcessIdentity?,
+                                   overridingProtection: Bool = false) -> StopResult {
         guard let identity, identity.pid == proc.pid else {
             return .refused("\(proc.friendlyName) could not be checked before stopping, so it was left alone.")
         }
-        if let agent = CodingAgentHosts.liveSessionAgent(pid: proc.pid) {
+        // never Mac Analyzers itself or what started it, whatever was chosen (the same rule as a program stop)
+        if ProgramReach.selfChain().contains(Int32(proc.pid)) {
+            return .refused("Stopping \(proc.friendlyName) would end Mac Analyzers itself, or the program that started it, so nothing was stopped.")
+        }
+        if overridingProtection, !proc.canQuit {
+            return .refused("\(proc.friendlyName) belongs to another account, so no app of yours can stop it.")
+        }
+        if !overridingProtection, let agent = CodingAgentHosts.liveSessionAgent(pid: proc.pid) {
             return .refused("\(proc.friendlyName) is part of a live \(agent) session. Close the session there instead.")
         }
         guard identity.isStillRunning else { return .gone }
@@ -56,13 +67,15 @@ public enum GuardControl {
            let app = NSRunningApplication(processIdentifier: pid_t(proc.pid)) {
             return app.terminate() ? .stopped : .gone
         }
-        guard CodingAgentHosts.isAvailable else { return .refused(CodingAgentHosts.unavailableSentence) }
-        // a process that hosts terminals ends every session in them when it ends
-        let hosted = CodingAgentHosts.sessionsBelow(pid: proc.pid)
-        if !hosted.isEmpty {
-            return .refused("\(proc.friendlyName) hosts \(ProgramReach.hostedText(hosted)). Close them there instead.")
+        if !overridingProtection {
+            guard CodingAgentHosts.isAvailable else { return .refused(CodingAgentHosts.unavailableSentence) }
+            // a process that hosts terminals ends every session in them when it ends
+            let hosted = CodingAgentHosts.sessionsBelow(pid: proc.pid)
+            if !hosted.isEmpty {
+                return .refused("\(proc.friendlyName) hosts \(ProgramReach.hostedText(hosted)). Close them there instead.")
+            }
         }
-        return stop([identity]).count == 1 ? .stopped : .gone
+        return stop([identity], overridingProtection: overridingProtection).count == 1 ? .stopped : .gone
     }
 
     /// Quit an app: its main process gets the ⌘Q request (save prompts still
@@ -77,8 +90,8 @@ public enum GuardControl {
     /// process that was shown. Refuses everything when the coding-agent list is
     /// unavailable. For a program (a process and what it started) use `stopProgram`.
     @discardableResult
-    public static func stop(_ identities: [ProcessIdentity]) -> [ProcessIdentity] {
-        guard CodingAgentHosts.isAvailable else { return [] }
+    public static func stop(_ identities: [ProcessIdentity], overridingProtection: Bool = false) -> [ProcessIdentity] {
+        guard overridingProtection || CodingAgentHosts.isAvailable else { return [] }
         return identities.filter {
             ProcessTree.signalIfSame(pid: Int32($0.pid), expected: $0.birth, signal: SIGTERM)
         }
@@ -109,11 +122,15 @@ public enum GuardControl {
     /// never an ancestor, and nothing at all if any of it is, sits under or sits above
     /// a live coding session anywhere in its whole subtree. Each signal re-checks the
     /// process's start time.
+    ///
+    /// `overridingProtection` is only ever the person's own choice, after a confirmation that named what protects the
+    /// program (a live coding session in it, or no list to check against). The guard and the cleanups never pass it.
     public static func askProgramToStop(_ listed: [ProcessIdentity], name: String = "This program",
-                                        grace: Duration = defaultGrace) async -> ProgramStop {
-        guard CodingAgentHosts.isAvailable else { return .refused(CodingAgentHosts.unavailableSentence) }
+                                        grace: Duration = defaultGrace,
+                                        overridingProtection: Bool = false) async -> ProgramStop {
+        guard overridingProtection || CodingAgentHosts.isAvailable else { return .refused(CodingAgentHosts.unavailableSentence) }
         let members: [ProcessIdentity]
-        switch ProgramReach.compute(listed: listed, name: name) {
+        switch ProgramReach.compute(listed: listed, name: name, overridingProtection: overridingProtection) {
         case .refused(let why): return .refused(why)
         case .reach(let found): members = found
         }
@@ -130,10 +147,11 @@ public enum GuardControl {
     /// shut down cleanly. Before the first signal the reach is computed again from what
     /// is running now, with every rule (locks, sessions above and below, start times), so
     /// a session that appeared in the meantime refuses it.
-    public static func forceStopProgram(_ stillRunning: [ProcessIdentity], name: String = "This program") async -> ProgramStop {
-        guard CodingAgentHosts.isAvailable else { return .refused(CodingAgentHosts.unavailableSentence) }
+    public static func forceStopProgram(_ stillRunning: [ProcessIdentity], name: String = "This program",
+                                        overridingProtection: Bool = false) async -> ProgramStop {
+        guard overridingProtection || CodingAgentHosts.isAvailable else { return .refused(CodingAgentHosts.unavailableSentence) }
         let members: [ProcessIdentity]
-        switch ProgramReach.compute(listed: stillRunning, name: name) {
+        switch ProgramReach.compute(listed: stillRunning, name: name, overridingProtection: overridingProtection) {
         case .refused(let why): return .refused(why, asked: stillRunning.count, stillRunning: stillRunning.filter(\.isStillRunning))
         case .reach(let found): members = found
         }
@@ -143,8 +161,9 @@ public enum GuardControl {
     }
 
     /// Test support: the refusal a Stop on these members would give, computed without sending anything.
-    @_spi(TestSupport) public static func reachRefusal(listed: [ProcessIdentity], name: String) -> String? {
-        if case .refused(let why) = ProgramReach.compute(listed: listed, name: name) { return why }
+    @_spi(TestSupport) public static func reachRefusal(listed: [ProcessIdentity], name: String,
+                                                       overridingProtection: Bool = false) -> String? {
+        if case .refused(let why) = ProgramReach.compute(listed: listed, name: name, overridingProtection: overridingProtection) { return why }
         return nil
     }
 

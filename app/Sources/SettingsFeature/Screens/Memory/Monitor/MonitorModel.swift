@@ -73,6 +73,7 @@ final class MonitorModel {
     private var meter = CPUMeter()
     private var lastCPU: [Int: Double] = [:]
     private var lastCensus: MemoryCensus?
+    private var lastRules: GuardRules?
 
     // MARK: - refreshing
 
@@ -84,8 +85,10 @@ final class MonitorModel {
         let ttl: TimeInterval = force ? 0 : 3
         switch lens {
         case .memory:
-            await awaitLoad({ (MemoryCensus.take(), LiveStats.memoryPressure()) },
+            // the guard's rules are read here, off the main thread, and only again when a file changed
+            await awaitLoad({ (MemoryCensus.take(), LiveStats.memoryPressure(), GuardRules.loadCached()) },
                             ttl: ttl, key: "monitor.census") { loaded in
+                lastRules = loaded.2
                 apply(census: loaded.0, pressure: loaded.1)
             }
             await primeCPUIfNeeded()
@@ -115,7 +118,7 @@ final class MonitorModel {
         let pids = census.groups.flatMap { $0.members.map { Int32($0.pid) } }
         let cpu = meter.look(at: ProcTable.cpuTimes(of: pids))
         lastCPU = cpu
-        let fresh = MonitorTree.rows(census: census, cpu: cpu)
+        let fresh = MonitorTree.rows(census: census, cpu: cpu, appProtection: appProtection())
         rows = rows.isEmpty ? MonitorTree.sorted(fresh, by: sort)
                             : MonitorTree.merge(rows, with: fresh)
         readIcons()
@@ -135,7 +138,13 @@ final class MonitorModel {
         let times = await Task.detached(priority: .utility) { ProcTable.cpuTimes(of: pids) }.value
         let cpu = meter.look(at: times)
         lastCPU = cpu
-        rows = MonitorTree.merge(rows, with: MonitorTree.rows(census: census, cpu: cpu))
+        rows = MonitorTree.merge(rows, with: MonitorTree.rows(census: census, cpu: cpu, appProtection: appProtection()))
+    }
+
+    /// Why an app is never quit by itself, from the guard's own rules as the last look read them, so every row of one look agrees.
+    private func appProtection() -> (CensusGroup) -> MonitorProtection.Note? {
+        guard let rules = lastRules else { return { _ in nil } }
+        return { MonitorProtection.note(for: $0, rules: rules) }
     }
 
     // MARK: - ordering
@@ -151,7 +160,7 @@ final class MonitorModel {
         var latest = rows
         // the person asked for this: take the rows as they are NOW as well
         if let census = lastCensus {
-            latest = MonitorTree.merge(rows, with: MonitorTree.rows(census: census, cpu: lastCPU))
+            latest = MonitorTree.merge(rows, with: MonitorTree.rows(census: census, cpu: lastCPU, appProtection: appProtection()))
         }
         rows = MonitorTree.sorted(latest, by: sort)
     }

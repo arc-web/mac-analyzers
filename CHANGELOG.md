@@ -26,6 +26,7 @@ is two bullets. The release date is added when the release is cut.
 - Mac Analyzers now requires macOS 27. <!-- wn: open=- icon=macwindow title="Requires macOS 27" -->
 - Memory Guard's Apps, Tools and macOS tabs switch when you click them again. The two lists you keep, apps that may be asked to quit and what is never closed, now add from a searchable list of your apps with their icons, the same one Settings uses. <!-- wn: open=guard icon=shield.lefthalf.filled title="Memory Guard Tabs and Lists" -->
 - The sidebar button is a plain toolbar button again, without a grey fill while the sidebar is shown, so it looks right in light and dark mode. <!-- wn: open=- icon=sidebar.leading -->
+- You can now stop anything you own from Monitor. A lock used to hide Stop on a program that belongs to a live coding session, on a group such as an npm task, and on an emulator started from one. Now those rows have Stop, and a group of protected programs lets you stop them all or open it and stop one. Before it does anything, the confirmation says why Memory Guard and the cleanups never stop it by themselves and what you could lose, and the button reads Stop Anyway. Other accounts' and macOS's own processes still can't be stopped from here, and the row says why. <!-- wn: open=monitor icon=xmark.octagon title="Stop Anything You Own" -->
 
 ## v2.72.0 — A welcome, Setup as it is, How It Works and What's New by feature
 <!-- wn: released=2026-11-14 -->

@@ -441,6 +441,13 @@ through `config.local.sh` (never hardcoded).
   the toolbar backdrop — light band, doubled title); no
   `.scrollEdgeEffectStyle(.hard)` in the Settings window;
   `.listSectionSpacing` is iOS-only.
+- **A lock guards automatic actions only; the person can stop anything they own.** What Memory Guard, the cleanups, the
+  menu-bar panel and notification actions leave alone (a live coding session, the Never Close list, a Connection Tool; the app in front is not asked in Monitor, where it is always Mac Analyzers) is never a reason for Monitor to withhold Stop or Quit. Monitor offers it on every row that runs as
+  the person's own account, and the confirmation says first why it is normally protected and what may be lost (the button
+  is destructive-styled, "Anyway"). Only another account's, macOS's own, a terminal session and Mac Analyzers itself (its own process, and the program that started it) have
+  no button, and the row says why, decided when the row is built and again at the stop. The person's path is the separate `asPerson` / `overridingProtection` parameter
+  (`MemoryStop.plan(target:asPerson:)`, `GuardControl`'s stop calls); every default stays refusing, so an automatic path
+  never reaches it. `agent-runner --probe-stop-targets` proves both sides.
 
 ## Branches, releases, upgrades
 

@@ -7,10 +7,13 @@ public enum MonitorStop: Sendable {
     /// Nothing is offered on this row, and nothing needs explaining: a part of
     /// an app is quit by quitting the app.
     case none
-    /// Offered nowhere, with the reason in a sentence (macOS's own, a live session's).
+    /// Offered nowhere, with the reason in a sentence: macOS's own, another account's, a terminal session.
+    /// Never "protected": what only the automatic stops leave alone is still offered to the person.
     case unavailable(String)
-    /// An app: ask its main process to quit; the helpers leave with it.
-    case quitApp(name: String, identities: [ProcessIdentity], processCount: Int, bytes: Int64, hosted: [String: Int])
+    /// An app: ask its main process to quit; the helpers leave with it. `protection` says why Mac Analyzers never quits it
+    /// by itself, when it does not: the confirmation leads with it.
+    case quitApp(name: String, identities: [ProcessIdentity], processCount: Int, bytes: Int64, hosted: [String: Int],
+                 protection: String?)
     /// A tools group: the person picks which separate programs to stop.
     case choosePrograms(group: String, programs: [StopTarget])
     /// One separate program and everything it started.
@@ -51,6 +54,12 @@ public struct MonitorRow: Identifiable, Sendable {
     /// Why the group is left alone or handled with care, in words (macOS, another account, a live coding session,
     /// a Connection Tool); nil when nothing is held back. Says only what Monitor's Stop and Quit do.
     public var leftAlone: String?
+    /// Why Mac Analyzers never stops this by itself (a live coding session, the Never Close list, an app in front, a
+    /// Connection Tool), and what stopping it costs, in words; nil when nothing protects it. A lock guards only the
+    /// automatic stops: a row that has this still offers Stop or Quit, and the confirmation says it first.
+    public var protection: String?
+    /// The same, short, for the lock's tooltip: "it's a live coding session".
+    public var protectionWhy: String?
     /// Whether the process this row stands for has ended since the last refresh. Rows of ended processes
     /// leave the table at the next refresh; in the moment between, the row says so instead of offering a
     /// Stop (and a Stop re-checks the process's start time regardless).
@@ -83,6 +92,16 @@ public struct MonitorRow: Identifiable, Sendable {
             || children.contains { $0.matches(wanted) }
     }
 
+    /// The lock's tooltip, as proper sentences: why, and that the person can still do it. `protectionWhy` is either a
+    /// clause ("it's a live coding session") or a whole sentence ("You asked that Safari never be closed.").
+    public var lockTip: String? {
+        guard let why = protectionWhy, let verb = stopVerb else { return nil }
+        let quits = verb == Names.Stop.quit
+        let never = "Memory Guard never \(quits ? "quits" : "stops") this by itself"
+        let can = "You can still \(verb.lowercased()) it."
+        return why.hasSuffix(".") ? "\(never). \(why) \(can)" : "\(never): \(why). \(can)"
+    }
+
     /// The label a Stop or Quit control carries, or nil when there is none.
     public var stopVerb: String? {
         switch stop {
@@ -92,8 +111,19 @@ public struct MonitorRow: Identifiable, Sendable {
         }
     }
 
-    /// Why the control is missing, for its tooltip.
+    /// Why the control is missing, for its tooltip: only what no one of this account can stop.
     public var lockedReason: String? {
         if case .unavailable(let reason) = stop { reason } else { nil }
+    }
+}
+
+extension MonitorRow {
+    /// Test support: a protected program's row from stand-in facts, for a render of the lock cell.
+    @_spi(TestSupport) public static func fixtureProtected(name: String) -> MonitorRow {
+        let target = StopTarget.fixture(name: name, whereItRuns: nil, lockedBy: "Claude Code", megabytes: 400)
+        return MonitorRow(id: "fixture", kind: .program, category: .tools, name: name, detail: "live Claude Code session",
+                          memoryBytes: 400 * 1_048_576, cpu: nil, processCount: 1, pid: nil, children: [],
+                          stop: .stopProgram(target), iconPID: nil, protection: target.protection,
+                          protectionWhy: target.protectionWhy)
     }
 }

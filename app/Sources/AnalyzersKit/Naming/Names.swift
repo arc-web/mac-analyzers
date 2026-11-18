@@ -40,6 +40,7 @@ public enum Names {
         public static let measures = "How the Monitor Measures Memory"
         public static let guardSteps = "When Memory Guard Steps In"
         public static let guardNever = "What Memory Guard Never Touches"
+        public static let rowLocks = "Why Some Rows Show a Lock"
         public static let cleanup = "Memory Cleanup"
         public static let safeToRemove = "What Is Safe to Remove"
         public static let downloadsTemp = "Downloads and Temporary Files"
@@ -57,7 +58,7 @@ public enum Names {
 
         /// Every name above, for the check.
         public static let all = [yourData, whatItDoes, whatItNeverDoes, whereItIsWritten, change, export, help, measures,
-                                 guardSteps, guardNever, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
+                                 guardSteps, guardNever, rowLocks, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
                                  oldRecordings, loginItems, network, whereWritten, editByHand, healthReport, privacy, turnOffMoved]
     }
 
