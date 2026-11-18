@@ -134,6 +134,20 @@ public struct GuardRules: Sendable {
         localOverride.withLock { $0 } ?? AnalyzersPaths.home.appending(path: "mac-analyzers/rules.local.json")
     }
 
+    private struct Cached { var stamp: [Date?] = []; var rules: GuardRules? }
+    private static let cache = Mutex(Cached())
+
+    /// `load`, read again only when one of the three files changed (by modification date): for a screen that asks at
+    /// every refresh. Safe to call from any thread.
+    public static func loadCached() -> GuardRules {
+        let urls = [rulesFile("plan.json"), rulesFile("protected.json"), localFile]
+        let stamp = urls.map { try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate }
+        if let hit = cache.withLock({ $0.stamp == stamp ? $0.rules : nil }) { return hit }
+        let fresh = load()
+        cache.withLock { $0 = Cached(stamp: stamp, rules: fresh) }
+        return fresh
+    }
+
     public static func load(catalog: KindCatalog = .current) -> GuardRules {
         let plan = (try? Data(contentsOf: rulesFile("plan.json"))).map { GuardPlan.parse($0, catalog: catalog) }
             ?? GuardPlan(rules: [], graceAfterLaunch: [:], alerts: [:], cooldownSeconds: 60, problems: ["plan.json was not found"])

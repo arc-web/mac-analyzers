@@ -209,6 +209,7 @@ func relaunchDetached(_ args: [String]) -> Never {
     await reachCases(f)
     await failClosedCases(f, restore: fixtureList, missing: missingList)
     await quitAndLinkCases(f)
+    await personStopCases(f)
     await reloadCase(f, original: realList + "\nFixture Agent\texe\t\(f.sessionExe)\n", at: fixtureList)
     await hostedSessionsCase(f, restore: fixtureList, missing: missingList)
     await confirmationCase(f)
@@ -526,14 +527,18 @@ func relaunchDetached(_ args: [String]) -> Never {
         let result = await GuardControl.askProgramToStop(t.memberIdentities, name: t.label, grace: .seconds(1))
         expect("the polite stop refuses and nothing is signalled", result.refusal == CodingAgentHosts.unavailableSentence && f.alive(root),
                result.refusal ?? "NOT refused")
+        // a lock guards the automatic stops: Monitor still offers the person a Stop, and the confirmation says the list is missing
         let rows = MonitorTree.rows(census: census)
-        let anyStop = rows.flatMap { [$0] + $0.children + $0.children.flatMap(\.children) }.contains { row in
-            if case .stopProgram = row.stop { return true }
-            if case .stopProcess = row.stop { return true }
-            if case .choosePrograms = row.stop { return true }
+        let programRow = rows.flatMap { [$0] + $0.children + $0.children.flatMap(\.children) }.first { row in
+            if case .stopProgram(let program) = row.stop { return program.id == t.id }
             return false
         }
-        expect("no Monitor row offers a Stop on a tool", !anyStop, anyStop ? "a row still offers Stop" : "every tool row is unavailable")
+        expect("Monitor still offers the person a Stop, and says why it is normally protected",
+               programRow?.protection?.contains("list of coding agents") == true,
+               programRow?.protection ?? "no Stop offered")
+        var personPlan = false
+        if case .confirm(let pending) = MemoryStop.plan(target: t, asPerson: true) { personPlan = pending.warning?.contains("list of coding agents") == true }
+        expect("MemoryStop.plan(target:asPerson:) asks first, with the warning", personPlan && f.alive(root), "")
     } else { expect("the fixture program was found", false, "not found") }
     if let live = LiveStats.process(pid: Int(root)), let identity = live.identity {
         var processRefused = false

@@ -27,6 +27,7 @@ private struct RowDetail: View {
     let icon: NSImage?
     let begin: (MonitorStop) -> Void
     let showDetails: (MonitorRow) -> Void
+    @Environment(Navigator.self) private var navigator
 
     var body: some View {
         Form {
@@ -65,14 +66,25 @@ private struct RowDetail: View {
                     }
                 }
             }
+            if row.stopVerb != nil, let held = row.protection {
+                Section {
+                    Label(held, systemImage: "lock.fill")
+                    Text("Memory Guard and the cleanups skip it, so it is never stopped by itself. You can still \((row.stopVerb ?? Names.Stop.stop).lowercased()) it from here, and the confirmation will say what you could lose.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    Button(Names.HowItWorks.rowLocks) { navigator.open(target: HowItWorksTopic.rowLocks.target) }
+                        .buttonStyle(.link)
+                } header: {
+                    Text("Protected")
+                }
+            }
             Section {
                 if let verb = row.stopVerb {
                     Button("\(verb) \(row.name)…") { begin(row.stop) }
                 } else if let reason = row.lockedReason {
-                    Label(reason, systemImage: "lock.fill").foregroundStyle(.secondary)
+                    Label(reason, systemImage: "nosign").foregroundStyle(.secondary)
                 }
                 // something the person may stop, with a word of care: a Connection Tool, a background service
-                if row.stopVerb != nil, let held = row.leftAlone {
+                if row.stopVerb != nil, let held = row.leftAlone, row.protection?.contains(held) != true {
                     Label(held, systemImage: "shield.lefthalf.filled").foregroundStyle(.secondary)
                 }
                 if row.pid != nil || row.iconPID != nil {

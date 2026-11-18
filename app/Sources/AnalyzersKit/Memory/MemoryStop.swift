@@ -16,6 +16,10 @@ public enum MemoryStop {
         public let title: String
         public let detail: String
         public let actionTitle: String
+        /// Why Mac Analyzers never stops this by itself and what stopping it costs, when it is protected and the
+        /// person chose the stop anyway: the confirmation says it first and the confirming button is styled as
+        /// destructive. nil when nothing protects it.
+        public var warning: String? = nil
         public let run: @MainActor @Sendable () async -> Report
     }
 
@@ -70,7 +74,7 @@ public enum MemoryStop {
     }
 
     /// "2 live Claude Code sessions".
-    public static func hostedText(_ hosted: [String: Int]) -> String? {
+    nonisolated public static func hostedText(_ hosted: [String: Int]) -> String? {
         let parts = hosted.sorted { $0.key < $1.key }.map { agent, count in
             "\(count) live \(agent) session\(count == 1 ? "" : "s")"
         }
@@ -135,16 +139,26 @@ public enum MemoryStop {
 
     /// Plans stopping one separate program and everything it started. The reach is
     /// computed now, from the live process table, and the dialog says its true size.
-    public static func plan(target: StopTarget) -> Outcome {
-        if let reason = target.lockedReason { return .refused(reason) }
-        guard target.canStop else { return .refused("\(target.label) belongs to another account.") }
+    ///
+    /// `asPerson` is the person pressing Stop in Monitor on something they own: a lock only guards what Mac
+    /// Analyzers does by itself, so a program that is part of, or hosts, a live coding session can be stopped, with
+    /// the dialog saying first why it is normally left alone and what may be lost. The panel, the notifications and
+    /// the guard never pass it. What a person cannot stop is the same either way: another account's, one that has gone,
+    /// a terminal session, Mac Analyzers itself.
+    public static func plan(target: StopTarget, asPerson: Bool = false) -> Outcome {
+        if asPerson {
+            if let why = target.personRefusal { return .refused(why) }
+        } else {
+            if let reason = target.lockedReason { return .refused(reason) }
+            guard target.canStop else { return .refused("\(target.label) belongs to another account.") }
+        }
         guard target.identity != nil, !target.memberIdentities.isEmpty else {
             return .refused("\(target.label) is not running any more.")
         }
         let listed = target.memberIdentities
         let label = target.label
         let reach: [ProcessIdentity]
-        switch ProgramReach.compute(listed: listed, name: label) {
+        switch ProgramReach.compute(listed: listed, name: label, overridingProtection: asPerson) {
         case .refused(let why): return .refused(why)
         case .reach(let found): reach = found
         }
@@ -153,20 +167,52 @@ public enum MemoryStop {
             ? "\(label) will be asked to stop."
             : "\(label) and \(started) \(started == 1 ? "process" : "processes") it started will be asked to stop."
         let seconds = Int(GuardControl.defaultGrace.components.seconds)
+        // what protects it is read from the live process table now, not from the census the screen last drew
+        let warning = asPerson ? target.protection ?? protectionSentence(
+            label: label, hosted: ProgramReach.sessionsReached(listed: reach), listAvailable: CodingAgentHosts.isAvailable) : nil
+        // how many sessions the confirmation knew of: one that appears while the person decides is not covered by it
+        let knownSessions = asPerson ? ProgramReach.sessionsReached(listed: listed).values.reduce(0, +) : 0
+        let detail = (warning.map { "\($0) " } ?? "") + "\(what) Anything in progress is interrupted. If anything is still running after \(seconds) seconds, nothing is forced: you will be told what is left and can choose Force Stop."
         return .confirm(Pending(
-            title: "Stop \(label)?",
-            detail: "\(what) Anything in progress is interrupted. If anything is still running after \(seconds) seconds, nothing is forced: you will be told what is left and can choose Force Stop.",
-            actionTitle: "Stop \(label)") {
-                let result = await GuardControl.askProgramToStop(listed, name: label)
-                return programReport(label, result)
+            title: "Stop \(label)?", detail: detail, actionTitle: "Stop \(label)", warning: warning) {
+                if asPerson, ProgramReach.sessionsReached(listed: listed).values.reduce(0, +) > knownSessions {
+                    return Report("A live coding session started in \(label) while you were deciding, so nothing was stopped. Press Stop again to see what it would end.")
+                }
+                let result = await GuardControl.askProgramToStop(listed, name: label, overridingProtection: asPerson)
+                return programReport(label, result, overridingProtection: asPerson, warning: warning)
             })
+    }
+
+    /// Why Mac Analyzers never stops something by itself, and what stopping it would cost, in one sentence for a
+    /// confirmation or a tooltip; nil when nothing protects it. `agent` is the coding agent whose live session it is
+    /// part of, `hosted` the live sessions that run below it, and without the list of coding agents nothing can be told apart.
+    nonisolated public static func protectionSentence(label: String, agent: String? = nil, hosted: [String: Int] = [:],
+                                          listAvailable: Bool = true) -> String? {
+        var parts: [String] = []
+        if let agent {
+            parts.append("\(label) is part of a live \(agent) session, which Mac Analyzers never stops by itself. Stopping it can end the session and lose work in it that is not saved.")
+        }
+        if let text = hostedText(hosted) {
+            parts.append("\(label) \(agent == nil ? "is, or hosts," : "also hosts") \(text), which Mac Analyzers never stops by itself. Stopping it ends them too, and anything in them that is not saved is lost.")
+        }
+        if !listAvailable {
+            parts.append("Mac Analyzers could not read its list of coding agents, so it cannot tell whether a live coding session is part of this. Any that is will end with it.")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
+    }
+
+    /// The same for one process a person is about to stop, read from the live process table now.
+    public static func protectionText(ofProcess process: LiveProcess) -> String? {
+        guard let identity = process.identity ?? ProcessIdentity.of(pid: process.pid) else { return nil }
+        let hosted = ProgramReach.sessionsReached(listed: [identity])
+        return protectionSentence(label: process.friendlyName, hosted: hosted, listAvailable: CodingAgentHosts.isAvailable)
     }
 
     /// What stopping this program would reach, worked out now from the live process table: "and 6 processes
     /// it started" (nothing when it started none), or the reason a stop would be refused. Shown wherever a program is
     /// offered for a stop before the person confirms.
-    public static func reachText(of target: StopTarget) -> String? {
-        switch ProgramReach.compute(listed: target.memberIdentities, name: target.label) {
+    public static func reachText(of target: StopTarget, asPerson: Bool = false) -> String? {
+        switch ProgramReach.compute(listed: target.memberIdentities, name: target.label, overridingProtection: asPerson) {
         case .refused(let why): return why
         case .reach(let found):
             let started = found.count - 1
@@ -175,15 +221,17 @@ public enum MemoryStop {
     }
 
     /// The sentence after a program stop, and the Force Stop offer when something is left.
-    static func programReport(_ label: String, _ result: GuardControl.ProgramStop) -> Report {
+    static func programReport(_ label: String, _ result: GuardControl.ProgramStop,
+                              overridingProtection: Bool = false, warning: String? = nil) -> Report {
         if let why = result.refusal { return Report(why) }
         if result.allEnded { return Report("\(label) stopped.") }
         let left = result.stillRunning
-        return Report(programSummary(label, result), force: forceOffer(label, left))
+        return Report(programSummary(label, result), force: forceOffer(label, left, overridingProtection: overridingProtection, warning: warning))
     }
 
     /// Step two, offered only when something did not stop.
-    public static func forceOffer(_ label: String, _ left: [ProcessIdentity]) -> Pending {
+    public static func forceOffer(_ label: String, _ left: [ProcessIdentity], overridingProtection: Bool = false,
+                                  warning: String? = nil) -> Pending {
         let names = left.map { identity -> String in
             let name = LiveStats.process(pid: identity.pid)?.friendlyName ?? "a process"
             return "\(name) (process \(identity.pid))"
@@ -191,9 +239,9 @@ public enum MemoryStop {
         let shown = names.prefix(8).joined(separator: ", ") + (names.count > 8 ? ", and \(names.count - 8) more" : "")
         return Pending(
             title: "Force \(label) to Stop?",
-            detail: "Still running: \(shown). Forcing them to stop takes effect at once. They cannot save or shut down cleanly, and a database or container may lose data. Only continue if that is acceptable.",
-            actionTitle: "Force Stop") {
-                let result = await GuardControl.forceStopProgram(left, name: label)
+            detail: (warning.map { "\($0) " } ?? "") + "Still running: \(shown). Forcing them to stop takes effect at once. They cannot save or shut down cleanly, and a database or container may lose data. Only continue if that is acceptable.",
+            actionTitle: "Force Stop", warning: warning) {
+                let result = await GuardControl.forceStopProgram(left, name: label, overridingProtection: overridingProtection)
                 if let why = result.refusal { return Report(why) }
                 return Report(result.allEnded ? "\(label) was forced to stop."
                     : "\(result.stillRunning.count) of \(result.asked) processes are still running after being forced. They may belong to another account.")

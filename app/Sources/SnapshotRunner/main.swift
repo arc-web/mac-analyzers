@@ -1,7 +1,7 @@
 // snapshot-runner — render a real screen of the app to a PNG without ever
 // putting a window in front of anyone.
 //
-//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--seen <version>] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--welcome <fresh|upgraded|continuing>:<step>]
+//   snapshot-runner <target> <out.png> [--size 1100x720] [--wait 3] [--fake-running|--fake-failed|--fake-review|--fake-pressure] [--sidebar shown|hidden|peek] [--toolbar-dump] [--escape] [--toggle-frames] [--scroll-end] [--scroll-sidebar] [--update-state uptodate|dev|available] [--seen <version>] [--appearance light|dark] [--view-tree] [--guard-log file] [--startup-inventory <file>] [--fake-running|--fake-failed|--fake-review] [--home <folder>] [--default <key>=<value>] [--stop-sheet] [--lock-cell] [--welcome <fresh|upgraded|continuing>:<step>]
 //   snapshot-runner overview /tmp/overview.png
 //
 // <target> is any deep-link target the app understands (`monitor`, `caches`,
@@ -90,6 +90,15 @@ if arguments.first == "--probe-links" {
 if let domain = Bundle.main.bundleIdentifier ?? Optional(ProcessInfo.processInfo.processName),
    domain != "com.mac-analyzers.app" {
     UserDefaults.standard.removePersistentDomain(forName: domain)
+}
+// `--default <key>=true|false`: a remembered setting (a panel shown, a tab chosen) as it would be on a launch that
+// remembered it, written after the clear above. Repeatable.
+for (index, word) in arguments.enumerated() where word == "--default" && arguments.indices.contains(index + 1) {
+    let pair = arguments[index + 1].split(separator: "=", maxSplits: 1).map(String.init)
+    if pair.count == 2 {
+        if pair[1] == "true" || pair[1] == "false" { UserDefaults.standard.set(pair[1] == "true", forKey: pair[0]) }
+        else { UserDefaults.standard.set(pair[1], forKey: pair[0]) }
+    }
 }
 // the example screens (`review:fixture`) can be linked only in this process; this tool has no
 // app bundle, so MA_CHANGELOG names the changelog What's New shows (read HERE, never by the app)
@@ -290,7 +299,19 @@ final class Snapshot: NSObject, NSApplicationDelegate {
         if updateStateOption == nil { Task { await updates.check() } }
         // `--welcome <state:step>` (`fresh:3`) draws the Welcome window's own content at the size it has (use `--size 560x680`), not
         // the example inside the main window: the target is then only a placeholder
-        let root: AnyView = option("--welcome").map { example in
+        let root: AnyView = arguments.contains("--lock-cell")
+            ? AnyView(VStack(spacing: 0) {
+                MonitorLockCellPreview(row: MonitorRow.fixtureProtected(name: "etal-crm")).frame(height: 190)
+                MonitorInspectorPreview(row: MonitorRow.fixtureProtected(name: "etal-crm"))
+            })
+            : arguments.contains("--stop-sheet")
+            ? AnyView(MonitorStopSheetPreview(group: "npm task", programs: [
+                // the owner's case: a task of a live coding session, a plain one, and one that is not theirs
+                StopTarget.fixture(name: "npm task", whereItRuns: "etal-crm", lockedBy: "Claude Code", megabytes: 412, processes: 6),
+                StopTarget.fixture(name: "npm task", whereItRuns: "nutri-journey", megabytes: 168, processes: 3),
+                StopTarget.fixture(name: "npm task", whereItRuns: "billing-service", canStop: false, megabytes: 40),
+            ], ticked: true))
+            : option("--welcome").map { example in
             AnyView(WelcomeFlowView(fixture: example)
                 .environment(store).environment(config).environment(jobs).environment(updates))
         } ?? AnyView(MainWindowView(restoresLocation: false, sidebar: sidebarState)

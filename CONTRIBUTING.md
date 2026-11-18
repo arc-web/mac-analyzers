@@ -61,6 +61,25 @@ welcome either way.
 - Match the existing style: `$HOME`-based paths, `section`/`group` helpers,
   markdown report output, launchd labels under `com.mac-analyzers.*`.
 
+## How a contribution flows
+
+1. **Fork** the repository and **branch from `development`**.
+2. Make the change, then run `scripts/check.sh` on your Mac. It is the same
+   script the pull request runs, so a green run here is a green run there.
+3. Open a **pull request to `development`**. A pull request aimed at `main`
+   fails its first check and needs its base branch changed.
+4. **Checks run on GitHub.** The shell, lint and secrets checks run on Linux;
+   the engine tests and the app build run on a Mac when you touch a script,
+   a test or the app. A pull request that changes what people see also needs
+   its line under `## Next` in `CHANGELOG.md`, and the PR template says how it
+   is written. If nobody using the app would notice the change, a maintainer
+   adds the `no-changelog` label.
+5. **Review.** A maintainer reviews it against the safety rules below.
+6. **It lands in the next release.** Merging into `development` does not
+   publish anything: releases and betas are cut by the maintainer, on their
+   own Mac, with `scripts/cut-release.sh`. No GitHub workflow publishes a
+   release.
+
 ## Workflow
 
 **Fork the repo, branch from `development`, and open your PR against
