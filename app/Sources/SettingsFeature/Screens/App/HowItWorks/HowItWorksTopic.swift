@@ -26,7 +26,7 @@ enum HowItWorksTab: String, CaseIterable, Hashable, Sendable {
 
 /// One thing the app explains. Its deep link is `howItWorks:<raw value>`; each data screen's help button names one.
 enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sendable {
-    case measures, guardSteps, guardNever, cleanup
+    case measures, guardSteps, guardNever, rowLocks, cleanup
     case safeToRemove, downloadsTemp, timeMachine, unusedApps, oldRecordings
     case loginItems, network
     case whereWritten, editByHand, healthReport, privacy
@@ -35,7 +35,7 @@ enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sen
 
     var tab: HowItWorksTab {
         switch self {
-        case .measures, .guardSteps, .guardNever, .cleanup: .memory
+        case .measures, .guardSteps, .guardNever, .rowLocks, .cleanup: .memory
         case .safeToRemove, .downloadsTemp, .timeMachine, .unusedApps, .oldRecordings: .storage
         case .loginItems, .network: .system
         case .whereWritten, .editByHand, .healthReport, .privacy: .yourData
@@ -47,6 +47,7 @@ enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sen
         case .measures: Names.HowItWorks.measures
         case .guardSteps: Names.HowItWorks.guardSteps
         case .guardNever: Names.HowItWorks.guardNever
+        case .rowLocks: Names.HowItWorks.rowLocks
         case .cleanup: Names.HowItWorks.cleanup
         case .safeToRemove: Names.HowItWorks.safeToRemove
         case .downloadsTemp: Names.HowItWorks.downloadsTemp
@@ -67,6 +68,7 @@ enum HowItWorksTopic: String, CaseIterable, Identifiable, Hashable, Codable, Sen
         case .measures: "gauge.with.dots.needle.67percent"
         case .guardSteps: "shield.lefthalf.filled"
         case .guardNever: "hand.raised"
+        case .rowLocks: "lock.fill"
         case .cleanup: "sparkles"
         case .safeToRemove: "shippingbox"
         case .downloadsTemp: "arrow.down.circle"

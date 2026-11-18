@@ -92,7 +92,25 @@ enum ProgramReach {
         return seen.sorted()
     }
 
-    static func compute(listed: [ProcessIdentity], name: String) -> Outcome {
+    /// The live coding sessions a stop of these listed processes would end: the ones among them or above them
+    /// (agent → 1 each) and the ones below, read from the process table now. Used to tell a person what a stop they
+    /// chose themselves would cost.
+    static func sessionsReached(listed: [ProcessIdentity]) -> [String: Int] {
+        let pids = listed.filter(\.isStillRunning).map { Int32($0.pid) }
+        var found = CodingAgentHosts.sessionsBelow(roots: pids, children: liveChildren())
+        var counted = Set<String>()
+        for pid in pids {
+            if let agent = CodingAgentHosts.liveSessionAgent(pid: Int(pid)), counted.insert(agent).inserted {
+                found[agent, default: 0] += 1
+            }
+        }
+        return found
+    }
+
+    /// `overridingProtection`: the person chose this stop themselves, so a live coding session in the reach is
+    /// not a reason to refuse (the confirmation they gave named it). Everything else still refuses: a terminal
+    /// session, Mac Analyzers itself, a command line that cannot be believed yet.
+    static func compute(listed: [ProcessIdentity], name: String, overridingProtection: Bool = false) -> Outcome {
         let verified = listed.filter(\.isStillRunning)
         guard !verified.isEmpty else { return .reach([]) }
 
@@ -131,11 +149,11 @@ enum ProgramReach {
         // Sessions BELOW the program count too, including below the terminals the
         // reach does not enter: ending a program that hosts terminals closes them
         // and every session inside. Everything below every root is looked at.
-        let hosted = CodingAgentHosts.sessionsBelow(roots: Array(roots), children: children)
+        let hosted = overridingProtection ? [:] : CodingAgentHosts.sessionsBelow(roots: Array(roots), children: children)
         if !hosted.isEmpty {
             return .refused("\(name) hosts \(hostedText(hosted)), so nothing was stopped. Close them there.")
         }
-        for pid in depth.keys {
+        for pid in depth.keys where !overridingProtection {
             if let agent = CodingAgentHosts.liveSessionAgent(pid: Int(pid)) {
                 return .refused("\(name) is, or holds, a live \(agent) session, so nothing was stopped. Close the session there.")
             }

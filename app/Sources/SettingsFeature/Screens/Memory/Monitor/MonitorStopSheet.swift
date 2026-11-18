@@ -3,8 +3,9 @@ import AnalyzersKit
 
 /// A group Stop with more than one program in it: every separate program is
 /// listed, each with its own tick, so nothing is ended that was not chosen.
-/// Programs that belong to a live coding-agent session are listed too, but
-/// locked — they are never part of a group stop.
+/// A lock guards only what Mac Analyzers does by itself: programs of a live coding session
+/// are listed with the reason, tickable like any other, and stopped only when the person ticks them.
+/// What no one of this account can stop (another account's, a terminal session) is listed with its reason.
 struct MonitorStopSheet: View {
     let group: String
     let programs: [StopTarget]
@@ -13,12 +14,21 @@ struct MonitorStopSheet: View {
 
     /// Nothing is ticked to begin with: ending several programs at once is a
     /// choice, not the default.
-    @State private var ticked: Set<String> = []
+    @State private var ticked: Set<String>
     /// What stopping each program would reach (and, if it would be refused, why), worked out when
     /// the sheet opens: the rows say it before anything is chosen.
     @State private var reach: [String: String] = [:]
 
-    private var stoppable: [StopTarget] { programs.filter(\.isStoppable) }
+    init(group: String, programs: [StopTarget], preticked: Set<String> = [],
+         onCancel: @escaping () -> Void, onStop: @escaping ([StopTarget]) -> Void) {
+        self.group = group
+        self.programs = programs
+        self.onCancel = onCancel
+        self.onStop = onStop
+        _ticked = State(initialValue: preticked)
+    }
+
+    private var stoppable: [StopTarget] { programs.filter(\.isStoppableByPerson) }
     private var chosen: [StopTarget] { stoppable.filter { ticked.contains($0.id) } }
     private var chosenBytes: Int64 { chosen.reduce(0) { $0 + $1.totalBytes } }
 
@@ -39,6 +49,12 @@ struct MonitorStopSheet: View {
                 }
             }
 
+            if let held = chosenProtection {
+                Label(held, systemImage: "lock.fill")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+            }
             HStack {
                 Button(Names.Review.selectAll) { ticked = Set(stoppable.map(\.id)) }
                     .disabled(stoppable.isEmpty || ticked.count == stoppable.count)
@@ -55,10 +71,21 @@ struct MonitorStopSheet: View {
         }
         .frame(minWidth: 480, minHeight: 360)
         .task {
-            for program in programs where program.isStoppable {
-                if let text = MemoryStop.reachText(of: program) { reach[program.id] = text }
+            for program in programs where program.isStoppableByPerson {
+                if let text = MemoryStop.reachText(of: program, asPerson: true) { reach[program.id] = text }
             }
         }
+    }
+
+    /// What is said, above the button, when the ticked programs include ones Mac Analyzers never stops by itself.
+    private var chosenProtection: String? {
+        let held = chosen.filter { $0.protection != nil }
+        guard !held.isEmpty else { return nil }
+        let which = held.count == 1 ? "One of these programs is" : "\(held.count) of these programs are"
+        if !CodingAgentHosts.isAvailable {
+            return "\(which) protected because Mac Analyzers could not read its list of coding agents, so it cannot tell whether a live coding session is part of them. Any that is ends with them."
+        }
+        return "\(which) part of, or host, a live coding session. Mac Analyzers never stops them by itself; stopping them here ends the session and loses any work in it that is not saved."
     }
 
     private var stopTitle: String {
@@ -66,24 +93,24 @@ struct MonitorStopSheet: View {
     }
 
     @ViewBuilder private func row(_ program: StopTarget) -> some View {
-        if let reason = program.lockedReason {
-            HStack {
-                Image(systemName: "lock.fill").foregroundStyle(.secondary)
-                label(program)
-                Spacer()
-                Text(reason).font(.caption).foregroundStyle(.secondary)
-            }
-        } else if program.isStoppable {
+        if program.isStoppableByPerson {
             Toggle(isOn: Binding(get: { ticked.contains(program.id) },
                                  set: { if $0 { ticked.insert(program.id) } else { ticked.remove(program.id) } })) {
-                HStack { label(program); Spacer(); Text(program.totalText).foregroundStyle(.secondary).monospacedDigit() }
+                HStack {
+                    label(program)
+                    if let held = program.protection {
+                        Image(systemName: "lock.fill").foregroundStyle(.secondary).help(held)
+                    }
+                    Spacer()
+                    Text(program.totalText).foregroundStyle(.secondary).monospacedDigit()
+                }
             }
         } else {
             HStack {
-                Image(systemName: "lock.fill").foregroundStyle(.secondary)
+                Image(systemName: "nosign").foregroundStyle(.secondary)
                 label(program)
                 Spacer()
-                Text("Belongs to another account").font(.caption).foregroundStyle(.secondary)
+                Text(program.personRefusal ?? "").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
