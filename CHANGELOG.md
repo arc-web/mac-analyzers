@@ -8,6 +8,7 @@ bullet as a feature of its own, so every bullet ends with a short tag that
 GitHub does not show; `scripts/changelog-check.sh` says what it must hold.
 
 ## v2.73.0 — Stop what you own, a Mac Analyzers screen, and worktrees that are never removed
+<!-- wn: released=2026-11-18 -->
 
 - Updates, What's New, How It Works and Support no longer take rows in the sidebar. The Mac Analyzers item at the bottom, now showing the app's icon, its name and whether it is up to date, opens a screen about the app with all four, and stays highlighted on each of them. <!-- wn: open=app icon=macwindow title="The Mac Analyzers Screen" -->
 - What's New lists one card per release, with its title, version, number of new features and date. Open a release to see its features grouped by screen, and a feature to read about it. <!-- wn: open=updates:whatsNew icon=sparkles title="What's New by Release" -->
