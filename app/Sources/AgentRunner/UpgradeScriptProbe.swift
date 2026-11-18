@@ -34,6 +34,13 @@ enum UpgradeScriptProbe {
                    result.status == 1 && world.head() == world.c5 && result.output.contains("already past") && world.built() == nil,
                    "exit \(result.status), clone at \(world.label(world.head())): \(result.tail)")
             world.unpublishRelease()
+
+            // GitHub cannot be asked (nothing listens there): that is "couldn't reach", never "nothing is published"
+            world.reset(to: world.c1)
+            result = world.run(shell, "beta.command", api: "http://127.0.0.1:1")
+            report("\(name): a failed request to GitHub says it could not reach GitHub, and changes nothing",
+                   result.status == 1 && world.head() == world.c1 && result.output.contains("Could not reach GitHub")
+                   && !result.output.contains("No published"), "exit \(result.status): \(result.tail)")
         }
         if shells.count == 1 { report("a newer bash was not found on this Mac: only /bin/bash ran", true, "") }
     }
@@ -106,13 +113,13 @@ enum UpgradeScriptProbe {
         }
 
         /// Runs `script` from the clone under `shell`, in a UTF-8 locale, with the stubs first on PATH.
-        func run(_ shell: String, _ script: String) -> (status: Int32, output: String, tail: String) {
+        func run(_ shell: String, _ script: String, api override: String? = nil) -> (status: Int32, output: String, tail: String) {
             let process = Process(); let out = Pipe()
             process.executableURL = URL(fileURLWithPath: shell)
             process.arguments = [clone.appending(path: script).path]
             process.currentDirectoryURL = clone
             process.environment = ["PATH": "\(stubs.path):/usr/bin:/bin:/usr/sbin:/sbin", "HOME": root.path,
-                                   "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8", "MA_GITHUB_API": "file://\(api.path)",
+                                   "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8", "MA_GITHUB_API": override ?? "file://\(api.path)",
                                    "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_TERMINAL_PROMPT": "0"]
             process.standardOutput = out; process.standardError = out
             process.standardInput = FileHandle.nullDevice

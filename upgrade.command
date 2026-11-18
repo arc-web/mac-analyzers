@@ -7,8 +7,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # --no-pull: rebuild from this clone as it is (rebuild.command), for work that is not committed yet
-# --beta: move this clone (on development) to the newest beta's tag instead of pulling (beta.command); when a
-#         release newer than that beta is out, it is the release that is pulled
+# --beta: move this clone (on development) forward to the tag of the newest published beta instead of pulling
+#         (beta.command); when a release newer than that beta is out, the clone moves to that release's tag
 pull=1
 beta=0
 [[ "${1:-}" == "--no-pull" ]] && pull=0
@@ -31,13 +31,28 @@ if [[ "$beta" -eq 1 ]]; then
   # (a beta that was tagged and never published) is skipped.
   api="${MA_GITHUB_API:-https://api.github.com/repos/hrconsultnj/mac-analyzers}"
   newest=""
+  unreachable=""
   while IFS= read -r candidate; do
     [[ -n "$candidate" ]] || continue
-    if curl -fsS --max-time 20 -o /dev/null "${api}/releases/tags/${candidate}" 2>/dev/null; then
+    rc=0
+    code="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "${api}/releases/tags/${candidate}" 2>/dev/null)" || rc=$?
+    # 200 (or a file that was read) is a published release, 404 (or a file that is not there) is a bare tag; anything
+    # else (no network, a proxy, GitHub limiting this network, a server error) says nothing about the tag
+    if [[ "$rc" -eq 0 && ( "$code" == "200" || "$code" == "000" ) ]]; then
       newest="$candidate"
+      break
+    elif [[ "$rc" -eq 37 || ( "$rc" -eq 0 && "$code" == "404" ) ]]; then
+      continue
+    else
+      unreachable="${code:-no answer}"
       break
     fi
   done < <(git -c versionsort.suffix=-beta tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$' | head -n 8 || true)
+  if [[ -n "$unreachable" ]]; then
+    echo "✗ Could not reach GitHub to see which versions are published (answer: ${unreachable}). Nothing was changed."
+    echo "  Check the connection, or try again in a while if GitHub is limiting this network."
+    exit 1
+  fi
   if [[ -z "$newest" ]]; then
     echo "✗ No published beta or release was found on GitHub. Nothing was changed."
     exit 1
