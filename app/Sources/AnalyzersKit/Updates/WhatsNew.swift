@@ -63,8 +63,13 @@ public struct ReleaseNote: Identifiable, Sendable {
     public let items: [WhatsNewItem]
     /// The paragraphs after the first bullet that are not topic lines: "Minor fixes and improvements throughout."
     public let closing: [String]
+    /// The short name of a published beta ("2.72.1 Beta 2") when this is the card of one: the beta's own unreleased
+    /// notes, `## Next` as it stood at its tag. nil for a release and for the clone's own unreleased section.
+    public var betaLabel: String?
 
     public var id: String { title }
+    /// What names this note in a route and in its features' ids: the version, "beta" for a beta's card, else "next".
+    public var idPrefix: String { version ?? (betaLabel != nil ? "beta" : "next") }
     public var isUnreleased: Bool { version == nil }
 
     /// The title without "v2.68.0 — ".
@@ -77,7 +82,15 @@ public struct ReleaseNote: Identifiable, Sendable {
     /// The same release under another name on screen (the channels name the unreleased section differently).
     public func renamed(_ title: String) -> ReleaseNote {
         ReleaseNote(title: title, version: version, released: released, intro: intro,
-                    items: items.map { $0.renamed(releaseTitle: title) }, closing: closing)
+                    items: items.map { $0.renamed(releaseTitle: title) }, closing: closing, betaLabel: betaLabel)
+    }
+
+    /// The unreleased section as the card of a published beta: named by the beta ("2.72.1 Beta 2"), its features
+    /// re-identified so they never collide with the clone's own unreleased section.
+    public func asBeta(_ label: String) -> ReleaseNote {
+        ReleaseNote(title: label, version: nil, released: nil, intro: intro,
+                    items: items.map { $0.renamed(releaseTitle: label).reidentified(from: "next#", to: "beta#") },
+                    closing: closing, betaLabel: label)
     }
 
     /// What the list shows for this release: its features, then one "Other Notes" row when the entry has paragraphs
@@ -87,7 +100,7 @@ public struct ReleaseNote: Identifiable, Sendable {
     /// The feature-like row for `closing`; nil when there is none. Its screen shows the paragraphs.
     public var notesItem: WhatsNewItem? {
         guard !closing.isEmpty else { return nil }
-        return WhatsNewItem(id: "\(version ?? "next")#notes", version: version, released: released, releaseTitle: releaseTitle,
+        return WhatsNewItem(id: "\(idPrefix)#notes", version: version, released: released, releaseTitle: releaseTitle,
                             summary: Names.WhatsNew.notesFor(version), tagTitle: nil, body: closing.joined(separator: "\n\n"),
                             scope: .untagged, symbol: "note.text", image: nil, topic: Names.WhatsNew.otherNotes, isNotes: true)
     }
@@ -125,15 +138,30 @@ public struct ReleaseNote: Identifiable, Sendable {
     private static let developmentFile = OSAllocatedUnfairLock<URL?>(initialState: nil)
     public static func useDevelopmentFile(_ url: URL?) { developmentFile.withLock { $0 = url } }
 
-    /// The notes for a channel: Releases as always; Beta and This Copy start with the "## Next" section of the
-    /// changelog they follow (what is on development, what is in the clone), then the bundled releases.
-    public static func channelNotes(channel: UpdateChannel, changelog: String?, includeNext: Bool) -> [ReleaseNote] {
-        let released = bundled(includeNext: includeNext)
-        guard channel != .releases, let changelog,
-              let next = parse(changelog, includeNext: true).first(where: { $0.isUnreleased })
-        else { return released }
-        let title = channel == .beta ? "On Development — Not Yet Released" : "In Your Clone — Not Yet Released"
-        return [next.renamed(title)] + released.filter { !$0.isUnreleased }
+    /// The title of the clone's own unreleased section on This Copy.
+    public static let notReleasedTitle = "Not Released Yet"
+
+    /// The notes a channel's list shows, newest first. Releases: the published releases (the bundled ones) and
+    /// nothing else. Beta: the newest published beta's card (its `## Next` as it stood at its tag, `betaChangelog`,
+    /// named by `betaLabel`), then the releases. This Copy: those, with a "Not Released Yet" card on top built from
+    /// the clone's own `## Next` (`cloneChangelog`), left out when it says exactly what the beta's card says.
+    public static func channelNotes(channel: UpdateChannel, cloneChangelog: String?, betaChangelog: String?,
+                                    betaLabel: String?) -> [ReleaseNote] {
+        let released = bundled(includeNext: false).filter { !$0.isUnreleased }
+        guard channel != .releases else { return released }
+        var cards: [ReleaseNote] = []
+        var beta: ReleaseNote?
+        if let betaChangelog, let betaLabel,
+           let next = parse(betaChangelog, includeNext: true).first(where: { $0.isUnreleased }) {
+            beta = next.asBeta(betaLabel)
+        }
+        if channel == .thisCopy, let cloneChangelog,
+           let next = parse(cloneChangelog, includeNext: true).first(where: { $0.isUnreleased }),
+           next.items.map(\.body) != beta?.items.map(\.body) {
+            cards.append(next.renamed(notReleasedTitle))
+        }
+        if let beta { cards.append(beta) }
+        return cards + released
     }
 
     /// The newest release that has shipped: what the sidebar card announces.
@@ -144,6 +172,12 @@ public struct ReleaseNote: Identifiable, Sendable {
 }
 
 extension WhatsNewItem {
+    func reidentified(from prefix: String, to replacement: String) -> WhatsNewItem {
+        let newID = id.hasPrefix(prefix) ? replacement + id.dropFirst(prefix.count) : id
+        return WhatsNewItem(id: newID, version: version, released: released, releaseTitle: releaseTitle, summary: summary,
+                            tagTitle: tagTitle, body: body, scope: scope, symbol: symbol, image: image, topic: topic, isNotes: isNotes)
+    }
+
     func renamed(releaseTitle: String) -> WhatsNewItem {
         WhatsNewItem(id: id, version: version, released: released, releaseTitle: releaseTitle, summary: summary, tagTitle: tagTitle,
                      body: body, scope: scope, symbol: symbol, image: image, topic: topic, isNotes: isNotes)

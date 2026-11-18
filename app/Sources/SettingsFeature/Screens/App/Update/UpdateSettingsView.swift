@@ -8,7 +8,14 @@ struct UpdateSettingsView: View {
 
     @Environment(UpdateState.self) private var updates
 
-    @Environment(Navigator.self) private var navigator
+    private let listLink = UpdatesListLink.shared
+
+    /// What's New, under the controls: the list follows the channel picked above (`WhatsNewSource`).
+    @State private var notes: [ReleaseNote] = []
+    @State private var loaded = false
+    /// The release seen before this visit, read once: opening the screen marks what is installed as seen, and the
+    /// "New" marks on the cards must still say what had not been.
+    @State private var seenBefore: String?
 
     // The latest release, whether one is newer and whether a check is running all come from the app's one
     // update state, so a check made here also reaches the sidebar, Overview and the menu-bar panel.
@@ -36,8 +43,15 @@ struct UpdateSettingsView: View {
         }
     }
 
+    private func scrollIfAsked(_ proxy: ScrollViewProxy) {
+        guard listLink.scrollToList, loaded else { return }
+        listLink.scrollToList = false
+        withAnimation { proxy.scrollTo(WhatsNewSections.anchor, anchor: .top) }
+    }
+
     var body: some View {
         DataScreen(title: Names.Screen.updates, subtitle: updates.build.versionText) {
+        ScrollViewReader { proxy in
         List {
             UpdateChannelSection(updates: updates, checking: checking)
             Section {
@@ -85,29 +99,41 @@ struct UpdateSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section {
-                Button { navigator.push(.app(.releases)) } label: {
-                    HStack {
-                        Label {
-                            VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
-                                Text(Names.WhatsNew.title)
-                                Text("What each release brought, release by release.").font(.caption).foregroundStyle(.secondary)
-                            }
-                        } icon: { Image(systemName: "sparkles") }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                            .accessibilityHidden(true)
+                if !loaded {
+                    ProgressView().controlSize(.small)
+                } else if notes.isEmpty {
+                    Text(Names.WhatsNew.notInTheseNotes).foregroundStyle(.secondary)
+                } else {
+                    ForEach(notes) { note in
+                        WhatsNewReleaseCard(note: note, seen: seenBefore)
+                            .listRowSeparator(.hidden)
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+            } header: {
+                Label(Names.WhatsNew.title, systemImage: "sparkles").font(.headline)
             }
+            .id(WhatsNewSections.anchor)
         }
         .listStyle(.inset)
+        // a link to the list (`updates:whatsNew`) scrolls to it once the screen is showing and the list is loaded
+        .onChange(of: listLink.scrollToList) { scrollIfAsked(proxy) }
+        .onChange(of: loaded) { scrollIfAsked(proxy) }
+        }
         }
         .task {
             // always fresh when the pane opens — the cache is for background
             // polling, not for the screen whose job is showing the truth
             await updates.check(force: true)
+        }
+        .task(id: "\(updates.channel.rawValue)|\(updates.channelChangelog?.hashValue ?? 0)|\(updates.betaNotes?.label ?? "")") {
+            if seenBefore == nil {
+                await WhatsNewSeen.migrate(installed: installed)
+                seenBefore = WhatsNewSeen.version ?? ""
+                // being on this screen is seeing what the installed version brought
+                WhatsNewSeen.markSeen(installed)
+            }
+            notes = await WhatsNewSource.notes(updates: updates)
+            loaded = true
         }
     }
 }

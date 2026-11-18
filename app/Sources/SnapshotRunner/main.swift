@@ -67,7 +67,7 @@ if arguments.first == "--probe-links" {
                     "undo:servers": "undo", "undo:opened": "undo", "logs": "activity", "schedule": "prefsSchedule",
                     "update": "updates", "log:guardLog": "memoryGuard", "setup": "setup",
                     "app": "app", "about": "howItWorks", "howItWorks": "howItWorks", "support": "support",
-                    "updates:whatsNew": "updates", "updates:whatsNew:latest": "updates"]
+                    "updates:whatsNew": "updates", "updates:whatsNew:latest": "updates", "updates:whatsNew:2.71.0": "updates"]
     for (target, section) in overview.sorted(by: { $0.key < $1.key }) {
         let landed = DeepLinkRouter.probeRouting(of: target)
         let ok = landed.contains("\"\(section)\"") && !landed.contains("unknown")
@@ -229,7 +229,7 @@ final class Snapshot: NSObject, NSApplicationDelegate {
                 "beta-release": (.beta, .offered("2.72.1"), "2.72.1 Beta 2", CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
                 "beta-ahead": (.beta, .ahead(Names.ChannelText.aheadOfBeta), "2.72.1 Beta 2", CloneFacts(branch: "development", isDirty: true, fingerprint: "x", relation: .same)),
                 "beta-offline": (.beta, .unknown(Names.ChannelText.offline), nil, CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
-                "copy-behind": (.thisCopy, .behind(changes: 3, uncommitted: true), nil, CloneFacts(branch: "feature/update-channels", isDirty: true, fingerprint: "x", relation: .cloneAhead(3))),
+                "copy-behind": (.thisCopy, .behind(changes: 3, uncommitted: true), nil, CloneFacts(branch: "development", isDirty: true, fingerprint: "x", relation: .cloneAhead(3))),
                 "copy-dirty": (.thisCopy, .behind(changes: 0, uncommitted: true), nil, CloneFacts(branch: "development", isDirty: true, fingerprint: "x", relation: .same)),
                 "copy-current": (.thisCopy, .upToDate, nil, CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
                 "copy-differs": (.thisCopy, .differs(Names.ChannelText.installHadChangesCloneLost), nil, CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
@@ -249,7 +249,14 @@ final class Snapshot: NSObject, NSApplicationDelegate {
                 }
                 let channelState = UpdateState(build: channelBuild)
                 channelState.preset(latest: version)
-                channelState.preset(channel: fixture.0, state: fixture.1, newest: fixture.2, cloneBranch: fixture.3.branch, facts: fixture.3)
+                // what the What's New list shows under the channel: the beta's notes (Beta and This Copy, when a beta is out)
+                // and the clone's own unreleased section (This Copy)
+                let betaOut = !["beta-none", "beta-offline", "beta-release"].contains(state)
+                let betaChangelog = "## Next\n\n- The Updates screen lists what each release brought. <!-- wn: open=update icon=sparkles title=\"Release Notes on Updates\" -->\n- Beta follows the newest pre-release. <!-- wn: open=update icon=testtube.2 title=\"Beta Channel\" -->\n"
+                let cloneChangelog = "## Next\n\n- The Updates screen lists what each release brought. <!-- wn: open=update icon=sparkles title=\"Release Notes on Updates\" -->\n- Beta follows the newest pre-release. <!-- wn: open=update icon=testtube.2 title=\"Beta Channel\" -->\n- A change only your clone has. <!-- wn: open=- icon=hammer title=\"Your Clone\" -->\n"
+                channelState.preset(channel: fixture.0, state: fixture.1, newest: fixture.2, cloneBranch: fixture.3.branch, facts: fixture.3,
+                                    cloneChangelog: fixture.0 == .thisCopy ? cloneChangelog : nil,
+                                    betaNotes: betaOut ? UpdateState.BetaNotes(label: "2.72.1 Beta 2", changelog: betaChangelog) : nil)
                 return channelState
             }
             return forced

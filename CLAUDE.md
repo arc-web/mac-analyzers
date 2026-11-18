@@ -493,9 +493,16 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   pull requests check the text rules and say the rest was not run). The sidebar
   card that announces the newest unseen release is `whatsNew.seenVersion` in the
   defaults (never on a development build or a first launch); render it with
-  `snapshot-runner sidebar:whatsNewCard out.png`, and What's New with
-  `updates:whatsNew`, `updates:whatsNew:latest` and `updates:whatsNew:<version>`
-  (`MA_CHANGELOG=app/Fixtures/whats-new.md` for stand-in releases).
+  `snapshot-runner sidebar:whatsNewCard out.png`. What's New is the list on the
+  Updates screen itself, under the channel picker (`UpdateSettingsView`; no screen or row of its
+  own), and it follows the channel: `WhatsNewSource` / `ReleaseNote.channelNotes` give Releases the
+  published releases, Beta those plus the newest published beta past the newest release (a card named by
+  `BuildInfo.label`, its notes the `## Next` at that beta's tag), and This Copy those plus a "Not Released
+  Yet" card from the clone's own `## Next`; a card pushes its release (`WhatsNewReleaseScreen`), a feature
+  its detail. The links are `updates:whatsNew` (Updates, scrolled to the list), `updates:whatsNew:latest`
+  and `updates:whatsNew:<version>`; render them with
+  `snapshot-runner update out.png --update-state <uptodate|beta-behind|beta-none|copy-behind|…>` and
+  `MA_CHANGELOG=app/Fixtures/whats-new.md` for stand-in releases.
 - Installed clones update via `./upgrade.command` (Finder double-clickable):
   `git pull --ff-only` → `app/build.sh` (reinstalls to /Applications) → both
   `*-manage-agents.sh install` → relaunch the app (prefers the /Applications

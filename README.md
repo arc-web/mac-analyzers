@@ -232,7 +232,7 @@ network requests the app makes:
 
 - **The release check** — on launch and every 6 hours, one public request to
   GitHub's list of releases.
-- **The Beta channel**, only if you chose it — every 6 hours, a GitHub
+- **The Beta and This Copy channels**, only if you chose one — every 6 hours, a GitHub
   request for the list of published pre-releases, and a read of the
   changelog of the newest one.
 - **Install** — when you press it, `upgrade.command` (or `beta.command` on
