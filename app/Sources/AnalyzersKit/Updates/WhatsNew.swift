@@ -100,8 +100,22 @@ public struct ReleaseNote: Identifiable, Sendable {
     /// A build ahead of the last release (`includeNext`) starts with what is in
     /// it and not yet released: the changelog's "## Next" section.
     public static func bundled(includeNext: Bool = false) -> [ReleaseNote] {
-        let url = Bundle.main.url(forResource: "CHANGELOG", withExtension: "md") ?? developmentFile.withLock { $0 }
-        guard let url, let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        guard let url = changelogURL else { return [] }
+        return bundled(at: url, includeNext: includeNext)
+    }
+
+    private static var changelogURL: URL? {
+        Bundle.main.url(forResource: "CHANGELOG", withExtension: "md") ?? developmentFile.withLock { $0 }
+    }
+
+    /// When the changelog the notes are read from was last changed: what a cache of the parsed notes is keyed by.
+    public static var changelogStamp: Date? {
+        guard let url = changelogURL else { return nil }
+        return (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+    }
+
+    private static func bundled(at url: URL, includeNext: Bool) -> [ReleaseNote] {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         return parse(text, includeNext: includeNext)
     }
 

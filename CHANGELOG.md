@@ -17,6 +17,8 @@ The screen is a deep-link name such as `monitor`, `trends` or `recordings`
 title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
+- Updates, What's New, How It Works and Support no longer take rows in the sidebar. The Mac Analyzers item at the bottom, now showing the app's icon, its name and whether it is up to date, opens a screen about the app with all four, and stays highlighted on each of them. <!-- wn: open=app icon=macwindow title="The Mac Analyzers Screen" -->
+- What's New lists one card per release, with its title, version, number of new features and date. Open a release to see its features grouped by screen, and a feature to read about it. <!-- wn: open=updates:whatsNew icon=sparkles title="What's New by Release" -->
 - The sidebar's icons are in colour again, one colour for each section, in light and dark mode. <!-- wn: open=- icon=sidebar.leading title="Coloured Sidebar Icons" -->
 - Overview and Disk open with a header that says where you are: an icon, the name, one line about it, and Overview lists the screens it summarizes so each is one click away. <!-- wn: open=overview icon=gauge.with.dots.needle.33percent title="Headers on Overview and Disk" -->
 - Settings › Storage is grouped by what each setting controls: build caches, tool caches, code projects, git worktrees, apps and recordings, Downloads and backups. Every setting has a short explanation under it. Nothing about what the cleans do has changed. <!-- wn: open=storage icon=internaldrive.fill title="Storage Settings, Reorganized" -->
