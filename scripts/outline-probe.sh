@@ -61,6 +61,11 @@ build() {
   BIN="$(env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
          swift build "${BUILD_ARGS[@]}" "${CONFIG_ARGS[@]}" --show-bin-path 2>/dev/null)/SnapshotRunner"
   [ -x "$BIN" ] || { echo "outline-probe: no SnapshotRunner at $BIN" >&2; exit 1; }
+  # A tool with no bundle keeps its preferences under its own file name, and every screen render of SnapshotRunner clears
+  # that domain when it starts (so a render never inherits a tab or an open group). A probe running while another agent
+  # renders lost the sort order and the shown columns it had just saved, and failed with nothing wrong in the code. The
+  # probe runs under its own name, so its preferences are its own.
+  ln -sf "$BIN" "$TMP/OutlineProbe" && BIN="$TMP/OutlineProbe"
 }
 
 FAILED=0

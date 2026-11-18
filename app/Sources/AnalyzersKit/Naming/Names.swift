@@ -40,6 +40,7 @@ public enum Names {
         public static let measures = "How the Monitor Measures Memory"
         public static let guardSteps = "When Memory Guard Steps In"
         public static let guardNever = "What Memory Guard Never Touches"
+        public static let rowLocks = "Why Some Rows Show a Lock"
         public static let cleanup = "Memory Cleanup"
         public static let safeToRemove = "What Is Safe to Remove"
         public static let downloadsTemp = "Downloads and Temporary Files"
@@ -57,7 +58,7 @@ public enum Names {
 
         /// Every name above, for the check.
         public static let all = [yourData, whatItDoes, whatItNeverDoes, whereItIsWritten, change, export, help, measures,
-                                 guardSteps, guardNever, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
+                                 guardSteps, guardNever, rowLocks, cleanup, safeToRemove, downloadsTemp, timeMachine, unusedApps,
                                  oldRecordings, loginItems, network, whereWritten, editByHand, healthReport, privacy, turnOffMoved]
     }
 
@@ -69,6 +70,9 @@ public enum Names {
         public static let hide = "Hide Sidebar"
         public static let enterFullScreen = "Enter Full Screen"
         public static let exitFullScreen = "Exit Full Screen"
+        // what VoiceOver hears as the sidebar button's value
+        public static let shownValue = "Shown"
+        public static let hiddenValue = "Hidden"
     }
 
     // MARK: - screens (the sidebar rows, and the title of the screen each opens)
@@ -360,6 +364,11 @@ public enum Names {
             default: ""
             }
         }
+
+        /// An uninstalled job's caption: it says what to do, not what the job would do.
+        public static let jobNotInstalled = "Not installed. Install the background jobs from \(Names.Screen.setup)."
+        /// A job that is installed but whose command could not be read.
+        public static let jobUnreadable = "Its command could not be read, so what it does is not shown here."
 
         /// "A", "A and B", "A, B and C".
         public static func list(_ items: [String]) -> String {
@@ -654,7 +663,7 @@ public enum Names {
         public static let every15 = "Every 15 Seconds"
         public static let every60 = "Every 60 Seconds"
         public static let paused = "Paused"
-        public static let inspector = "Inspector"
+        public static let inspector = "Details"
         public static let showDetails = "Show Details"
         public static let whereYourMemoryIs = "Where Your Memory Is"
         public static let nothingInScope = "Nothing in This Scope"

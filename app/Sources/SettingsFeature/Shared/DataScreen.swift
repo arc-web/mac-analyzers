@@ -3,7 +3,7 @@ import SwiftUI
 /// The frame of a screen that shows data: the title and a one-line subtitle in
 /// the window's toolbar, then the content filling every pixel left. There is no
 /// banner header above the data and no centred column — `PaneScaffold` and its
-/// header are for settings forms only. The content brings its own insets (a
+/// header are for settings forms, and `HubHeader` for the hubs that lead to other screens (Overview, Disk). The content brings its own insets (a
 /// `List`, a `Table` and a `Form` all have the system's); anything else asks for
 /// the standard margin with `padded`.
 ///

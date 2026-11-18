@@ -13,15 +13,21 @@ public enum MonitorTree {
 
     // MARK: - building
 
-    public static func rows(census: MemoryCensus, cpu: [Int: Double] = [:]) -> [MonitorRow] {
-        census.groups.map { groupRow($0, cpu: cpu) }
+    /// `appProtection` answers, for an app group, why Mac Analyzers never quits it by itself (the Never Close list, a
+    /// Connection Tool, the app in front): it needs the guard's rules and what is in front, which the screen supplies.
+    public static func rows(census: MemoryCensus, cpu: [Int: Double] = [:],
+                            appProtection: (CensusGroup) -> MonitorProtection.Note? = { _ in nil }) -> [MonitorRow] {
+        census.groups.map { groupRow($0, cpu: cpu, appProtection: appProtection) }
     }
 
-    private static func groupRow(_ group: CensusGroup, cpu: [Int: Double]) -> MonitorRow {
+    private static func groupRow(_ group: CensusGroup, cpu: [Int: Double],
+                                 appProtection: (CensusGroup) -> MonitorProtection.Note?) -> MonitorRow {
         let id = "group:\(group.id)"
         let children: [MonitorRow]
         let detail: String
         var stop: MonitorStop
+        var protection: String?
+        var why: String?
         let name = displayName(group.name)
 
         switch group.category {
@@ -31,10 +37,16 @@ public enum MonitorTree {
             detail = count > 1 ? "\(count) separate programs"
                 : (group.programs.first?.whereItRuns.map { "in \($0)" } ?? "")
             stop = toolsStop(group)
+            protection = toolsProtection(group)
+            why = protection == nil ? nil : (group.programs.count == 1 ? group.programs[0].protectionWhy
+                : CodingAgentHosts.isAvailable ? "some of its programs are live coding sessions" : "the list of coding agents could not be read")
         case .apps:
             children = group.parts.map { partRow($0, in: group, cpu: cpu) }
             detail = group.partsSummary ?? ""
-            stop = appStop(group)
+            let note = appProtection(group)
+            protection = note?.sentence
+            why = note?.reason
+            stop = appStop(group, protection: protection)
         case .system:
             children = group.parts.map { partRow($0, in: group, cpu: cpu) }
             detail = group.role ?? ""
@@ -46,12 +58,12 @@ public enum MonitorTree {
                           memoryBytes: group.totalBytes, cpu: total(of: group.members, cpu),
                           processCount: group.members.count, pid: nil,
                           children: children, stop: stop, iconPID: group.lead.pid,
-                          processKind: group.kind, leftAlone: group.leftAlone)
+                          processKind: group.kind, leftAlone: group.leftAlone, protection: protection, protectionWhy: why)
     }
 
     private static func partRow(_ part: CensusPart, in group: CensusGroup, cpu: [Int: Double]) -> MonitorRow {
         // eight renderers of one browser share a name: each is told apart by its process ID
-        let leaves = distinct(part.members.map { processRow($0, in: group, cpu: cpu, locked: nil) })
+        let leaves = distinct(part.members.map { processRow($0, in: group, cpu: cpu, program: nil) })
         return MonitorRow(id: "group:\(group.id)/part:\(part.title)", kind: .part, category: group.category,
                           name: part.title, detail: "", memoryBytes: part.totalBytes,
                           cpu: total(of: part.members, cpu), processCount: part.members.count, pid: nil,
@@ -60,12 +72,12 @@ public enum MonitorTree {
 
     private static func programRow(_ program: StopTarget, in group: CensusGroup, cpu: [Int: Double]) -> MonitorRow {
         let leaves = distinct(program.members.map {
-            processRow($0, in: group, cpu: cpu, locked: program.lockedReason)
+            processRow($0, in: group, cpu: cpu, program: program)
         })
-        let stop: MonitorStop = program.lockedReason.map { .unavailable($0) }
-            ?? (program.isStoppable
-                ? .stopProgram(program)
-                : .unavailable("This program belongs to another account or is not running."))
+        // a lock guards the automatic stops only: the person may stop whatever runs as their own account
+        let stop: MonitorStop = program.isStoppableByPerson
+            ? .stopProgram(program)
+            : .unavailable(program.personRefusal ?? "This program is not running any more.")
         // named for where it runs (what tells two of them apart), described by what it is
         return MonitorRow(id: "group:\(group.id)/\(program.id)", kind: .program, category: group.category,
                           name: program.whereItRuns ?? displayName(program.name),
@@ -76,7 +88,7 @@ public enum MonitorTree {
                           memoryBytes: program.totalBytes, cpu: total(of: program.members, cpu),
                           processCount: program.members.count, pid: program.identity?.pid ?? program.members.first?.pid,
                           children: leaves.count > 1 ? leaves : [], stop: stop,
-                          iconPID: nil)
+                          iconPID: nil, protection: program.protection, protectionWhy: program.protectionWhy)
     }
 
     /// Two rows with one title in one group are told apart by their process ID.
@@ -92,12 +104,17 @@ public enum MonitorTree {
     }
 
     private static func processRow(_ process: LiveProcess, in group: CensusGroup,
-                                   cpu: [Int: Double], locked: String?) -> MonitorRow {
+                                   cpu: [Int: Double], program: StopTarget?) -> MonitorRow {
         let stop: MonitorStop
         switch group.category {
         case .tools:
-            if let locked {
-                stop = .unavailable(locked)
+            // a member is never locked because its program or group is: the lock guards automatic stops only
+            // except a terminal session, which ignores a polite stop: Stop would say nothing and do nothing
+            if ProgramReach.selfChain().contains(Int32(process.pid)) {
+                stop = .unavailable("Stopping \(process.friendlyName) would end Mac Analyzers itself, or the program that started it.")
+            } else if CensusBuilder.shells.contains(process.friendlyName),
+               ProgramReach.isInteractiveShell(command: ProcTable.commandLine(of: Int32(process.pid))) {
+                stop = .unavailable("A shell is a terminal session — close its window to end it.")
             } else if process.canQuit, let identity = ProcessIdentity.of(pid: process.pid) {
                 stop = .stopProcess(process, identity)
             } else {
@@ -112,25 +129,40 @@ public enum MonitorTree {
         return MonitorRow(id: "process:\(process.pid)", kind: .process, category: group.category,
                           name: displayName(process.friendlyName), detail: "",
                           memoryBytes: process.memoryBytes, cpu: cpu[process.pid], processCount: 1,
-                          pid: process.pid, children: [], stop: stop, iconPID: process.pid)
+                          pid: process.pid, children: [], stop: stop, iconPID: process.pid,
+                          protection: group.category == .tools ? program?.protection : nil,
+                          protectionWhy: group.category == .tools ? program?.protectionWhy : nil)
     }
 
-    private static func appStop(_ group: CensusGroup) -> MonitorStop {
+    private static func appStop(_ group: CensusGroup, protection: String?) -> MonitorStop {
         guard case .app(let identities) = group.quit else { return .unavailable("Part of macOS.") }
         return .quitApp(name: group.name, identities: identities, processCount: group.members.count,
-                        bytes: group.totalBytes, hosted: group.hostedSessions)
+                        bytes: group.totalBytes, hosted: group.hostedSessions, protection: protection)
     }
 
     private static func toolsStop(_ group: CensusGroup) -> MonitorStop {
         guard case .tools = group.quit else {
             return .unavailable(group.leftAlone ?? "These programs belong to another account.")
         }
-        guard CodingAgentHosts.isAvailable else { return .unavailable(CodingAgentHosts.unavailableSentence) }
-        if group.programs.allSatisfy({ $0.lockedBy != nil || !$0.hostedSessions.isEmpty }),
-           let reason = group.programs.first?.lockedReason {
-            return .unavailable(reason)
+        // a group of protected programs still opens the choice: the person may stop what they own
+        guard group.programs.contains(where: \.isStoppableByPerson) else {
+            return .unavailable(group.programs.compactMap(\.personRefusal).first ?? "None of these programs can be stopped from here.")
         }
         return .choosePrograms(group: displayName(group.name), programs: group.programs)
+    }
+
+    /// What a group of programs says about the ones in it that Mac Analyzers never stops by itself.
+    private static func toolsProtection(_ group: CensusGroup) -> String? {
+        let held = group.programs.filter { $0.protection != nil }
+        guard !held.isEmpty else { return nil }
+        if group.programs.count == 1 { return held[0].protection }
+        let which = held.count == group.programs.count ? "All \(held.count) of its programs are"
+            : "\(held.count) of its \(group.programs.count) programs are"
+        // the real reason: with the list unreadable nothing is known to be a session
+        let reason = CodingAgentHosts.isAvailable
+            ? "part of, or host, a live coding session, which Mac Analyzers never stops by itself"
+            : "protected because Mac Analyzers could not read its list of coding agents, so it cannot tell whether a live coding session is part of them"
+        return "\(which) \(reason). You can stop the whole group or open it and stop one program."
     }
 
     /// The ids from a top-level row down to the row for this process: what to open, then what to select.

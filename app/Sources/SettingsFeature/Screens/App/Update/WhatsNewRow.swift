@@ -2,8 +2,8 @@ import SwiftUI
 import AnalyzersKit
 import UIComponents
 
-/// One feature as a row: its icon, its one line, and where and when it arrived. A click pushes the
-/// feature's own screen.
+/// One feature as a row: its icon, its title and a one-line description. The release and date are on the screen
+/// that lists it, not repeated on every row. A click pushes the feature's own screen.
 struct WhatsNewRow: View {
     let item: WhatsNewItem
     /// Shows the "New" mark: the feature came with a release newer than the one the person last saw.
@@ -19,9 +19,12 @@ struct WhatsNewRow: View {
                 Label {
                     VStack(alignment: .leading, spacing: Tokens.Space.xxs) {
                         Text(item.summary)
-                        Text(WhatsNewText.arrived(item))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let line = WhatsNewText.description(item) {
+                            Text(WhatsNewText.styled(line))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 } icon: {
                     // an icon column is the actual job of this width: symbols differ in width, and without one the
@@ -59,6 +62,32 @@ enum WhatsNewText {
         guard let version else { return Names.WhatsNew.notYetReleased }
         let day = released.map { $0.formatted(.dateTime.day().month(.abbreviated)) }
         return ["v\(version)", day].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// The row's second line: the first sentence of the bullet that is not already the title (the tag's title is a name, so
+    /// the sentence is the description; an untagged bullet's first sentence is its title, so the next one is). Nil when
+    /// there is nothing more to say.
+    static func description(_ item: WhatsNewItem) -> String? {
+        let sentences = sentences(of: item.body)
+        let candidate = sentences.first { $0 != item.summary }
+        return candidate.flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// The sentences of a paragraph, each ending at ". ", "! " or "? " (a full stop inside `code` or a number is not one).
+    static func sentences(of text: String) -> [String] {
+        var result: [String] = [], current = "", inCode = false
+        let chars = Array(text.replacingOccurrences(of: "\n", with: " "))
+        for (index, char) in chars.enumerated() {
+            current.append(char)
+            if char == "`" { inCode.toggle() }
+            let next = index + 1 < chars.count ? chars[index + 1] : " "
+            if !inCode, ".!?".contains(char), next == " " {
+                result.append(current.trimmingCharacters(in: .whitespaces)); current = ""
+            }
+        }
+        let rest = current.trimmingCharacters(in: .whitespaces)
+        if !rest.isEmpty { result.append(rest) }
+        return result
     }
 
     /// `code` spans and **emphasis** in the changelog render as such; text that isn't valid Markdown is shown as written.

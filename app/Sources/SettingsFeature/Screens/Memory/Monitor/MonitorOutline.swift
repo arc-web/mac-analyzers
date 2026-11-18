@@ -92,14 +92,18 @@ struct MonitorOutline<Menu: View>: View {
     @ViewBuilder private func stopControl(_ row: MonitorRow) -> some View {
         if row.isEnded {
             Text(Names.Monitor.ended).font(.caption).foregroundStyle(.tertiary)
+        } else if let verb = row.stopVerb, row.protection != nil {
+            // the lock is the cue; hovering it (or the cell) gives the row's own button
+            MonitorStopCell(row: row, verb: verb, help: helpText(for: row), action: { begin(row.stop) })
         } else if let verb = row.stopVerb {
             Button(verb) { begin(row.stop) }
                 .buttonStyle(.borderless)
                 .help(helpText(for: row))
         } else if let reason = row.lockedReason, row.category != .system {
-            // a lock says "this one is protected" (a live coding session); on a macOS service it would be on
-            // most of the table and say nothing, so those rows carry no control at all
-            Image(systemName: "lock.fill")
+            // no one of this account can stop it (another account's, a terminal session); on a macOS service it would be
+            // on most of the table and say nothing, so those rows carry no control at all. A lock is NOT this: a lock
+            // guards only the automatic stops, and a protected row still offers its Stop.
+            Image(systemName: "nosign")
                 .foregroundStyle(.tertiary)
                 .help(reason)
                 .accessibilityLabel(reason)
@@ -107,8 +111,14 @@ struct MonitorOutline<Menu: View>: View {
     }
 
     private func helpText(for row: MonitorRow) -> String {
+        let what = actionText(for: row)
+        // a protected row says why first: Mac Analyzers never does this by itself
+        return row.protection.map { "\($0) \(what)" } ?? what
+    }
+
+    private func actionText(for row: MonitorRow) -> String {
         switch row.stop {
-        case .quitApp(let name, _, let count, _, _):
+        case .quitApp(let name, _, let count, _, _, _):
             "Quit \(name) and all \(count) of its processes — the same as ⌘Q, save prompts still appear"
         case .choosePrograms(let group, let programs):
             "Choose which of the \(programs.count) \(group) programs to stop"

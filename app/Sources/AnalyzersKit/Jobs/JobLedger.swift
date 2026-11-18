@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// One line of `app-jobs.jsonl`: a pointer to a finished job, never its output.
@@ -56,6 +57,13 @@ public actor JobLedger {
         guard let data = try? encoder.encode(entry) else { return }
         let fm = FileManager.default
         try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+        // The app and agent-runner can append at the same moment: an exclusive lock on a file beside the ledger
+        // makes each read-append-replace whole, so neither loses the other's line.
+        let lockPath = url.path + ".lock"
+        let lock = Darwin.open(lockPath, O_RDWR | O_CREAT, 0o644)
+        if lock >= 0 { flock(lock, LOCK_EX) }
+        defer { if lock >= 0 { flock(lock, LOCK_UN); close(lock) } }
 
         // At most `cap` short lines (~100 KB): read, append, trim, replace atomically.
         var existing = (try? Data(contentsOf: url)) ?? Data()

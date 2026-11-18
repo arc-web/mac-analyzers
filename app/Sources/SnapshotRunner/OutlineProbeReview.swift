@@ -30,7 +30,7 @@ final class ReviewRig {
         let jobs = JobStore(ledger: JobLedger(url: scratch.appending(path: "jobs.jsonl")))
         harness = ProbeHarness(probe.view.environment(jobs), size: NSSize(width: 760, height: 640))
         outline = harness.outline
-        _ = settle(); spin(0.3)
+        _ = settle(); waitStable(quiet: 0.4) { signature }
     }
 
     func verdict(_ ok: Bool, _ line: String) {
@@ -38,7 +38,16 @@ final class ReviewRig {
         if !ok { failed = true }
     }
 
-    func settleAll() { _ = settle(); spin(0.3) }
+    /// What a person would see change: rows, sort and what the session offers. Done when none of it has moved for a while.
+    private var signature: String {
+        let sort = outline.sortDescriptors.map { "\($0.key ?? "?")\($0.ascending)" }.joined()
+        let first = outline.numberOfRows > 0 ? (outline.view(atColumn: 0, row: 0, makeIfNecessary: false)?.toolTip ?? "") : ""
+        return "\(outline.numberOfRows) \(sort) \(first) \(outline.selectedRowIndexes.count)"
+    }
+
+    /// Waits for the table to stop changing instead of for a fixed time: the work that follows an action (a binding
+    /// written on the next turn of the loop, a remembered order saved) takes longer on a busy Mac.
+    func settleAll() { _ = settle(); waitStable(quiet: 0.4) { signature } }
 
     /// The tooltip of a row's first cell: the path of a row, the reason of a kept one.
     func tip(_ row: Int) -> String? {

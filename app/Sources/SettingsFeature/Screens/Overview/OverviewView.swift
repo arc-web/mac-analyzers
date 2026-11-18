@@ -41,10 +41,26 @@ struct OverviewView: View {
             events: store.events, guardPaused: store.guardPaused))
     }
 
+    /// The screens Overview's boxes summarize, one row each.
+    private static let areas: [HubArea] = [
+        HubArea(title: Names.Screen.monitor, caption: "What is using your memory, and what you can stop.",
+                symbol: "gauge.with.dots.needle.67percent", color: .blue, target: "monitor"),
+        HubArea(title: Names.Screen.memoryGuard, caption: "What the guard has stopped, and the rules it follows.",
+                symbol: "shield.lefthalf.filled", color: .green, target: "guard"),
+        HubArea(title: Names.Screen.disk, caption: "Where the space is, and what each cleanup could give back.",
+                symbol: "internaldrive.fill", color: .indigo, target: "disk"),
+        HubArea(title: Names.Screen.activity, caption: "Every run, whoever started it.",
+                symbol: "list.bullet.rectangle.fill", color: .orange, target: "activity"),
+        HubArea(title: Names.Screen.trends, caption: "How memory and disk space have changed over time.",
+                symbol: "chart.xyaxis.line", color: .teal, target: "trends"),
+    ]
+
     var body: some View {
         let model = model
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                HubHeader(symbol: "gauge.with.dots.needle.33percent", color: .blue, title: Names.Screen.overview,
+                          caption: "Where your Mac stands right now, and the places that explain it.", areas: Self.areas)
                 alerts(model)
                 running
                 OverviewColumns {

@@ -1,7 +1,7 @@
 # For Claude: adapting this suite to a new Mac
 
 You (Claude) have been handed this folder to set up for YOUR user. It was built
-on the author's M2 Mac Studio (32 GB, macOS 26) — everything is designed to
+on the author's M2 Mac Studio (32 GB, macOS 27) — everything is designed to
 port, but calibrate it, don't just install it.
 
 ## What this is
@@ -69,7 +69,7 @@ Two sibling suites (the engine) + shared plumbing + the native app (the face):
    The launchd labels are the neutral `com.mac-analyzers.*` namespace.
 10. **Build the menu-bar app** — `./app/build.sh && open
     /Applications/MacAnalyzers.app` (Command Line Tools only, no Xcode; needs
-    macOS 26). The build signs with an Apple Development certificate when the
+    macOS 27). The build signs with an Apple Development certificate when the
     keychain has one (free with any Apple ID; keeps the permission identity
     stable across rebuilds), falls back to ad-hoc, and **installs the app to
     `/Applications`** — the repo `app/` copy is just the build artifact.

@@ -106,16 +106,11 @@ struct HowItWorksFacts: Sendable {
     }
 }
 
-/// Loads the facts once and keeps them for a minute, so opening a topic from the list does not read the logs again.
-@MainActor @Observable
-final class HowItWorksModel {
-    static let shared = HowItWorksModel()
-
-    private(set) var facts: HowItWorksFacts?
-    private var loadedAt = Date.distantPast
-
-    func load() async {
-        if facts?.logsRead == true, Date().timeIntervalSince(loadedAt) < 60 { return }
+extension HowItWorksFacts {
+    /// The quick part of the facts: the settings the sentences quote and the installed schedules, read from the config and the
+    /// plists only (no log, no process, no `sudo`). The topics start from it and add the rest; the Schedule pane's captions
+    /// use it alone.
+    @MainActor static func read() -> HowItWorksFacts {
         var f = HowItWorksFacts()
         let config = ConfigStore()
         f.hardCapMB = config.memory.hardCapMB
@@ -141,7 +136,6 @@ final class HowItWorksModel {
         f.nodeModulesNeedClean = config.storage.nmRequireClean
         f.recordingsDays = config.storage.recordingsDays
         f.turboCacheMaxGB = config.storage.turboCacheMaxGB
-        f.devToolKinds = KindCatalog.current.kinds.filter(\.devTooling).map(\.name)
         f.schedules = ScheduleKit.jobs.map { job in
             let installed = ScheduleKit.isInstalled(job.label)
             return HowItWorksFacts.ScheduleLine(
@@ -150,6 +144,22 @@ final class HowItWorksModel {
                 when: installed && ScheduleKit.schedule(for: job.label) != nil ? ScheduleKit.describe(job.label) : nil,
                 arguments: ScheduleKit.programArguments(for: job.label) ?? [])
         }
+        return f
+    }
+}
+
+/// Loads the facts once and keeps them for a minute, so opening a topic from the list does not read the logs again.
+@MainActor @Observable
+final class HowItWorksModel {
+    static let shared = HowItWorksModel()
+
+    private(set) var facts: HowItWorksFacts?
+    private var loadedAt = Date.distantPast
+
+    func load() async {
+        if facts?.logsRead == true, Date().timeIntervalSince(loadedAt) < 60 { return }
+        var f = HowItWorksFacts.read()
+        f.devToolKinds = KindCatalog.current.kinds.filter(\.devTooling).map(\.name)
         f.channel = UpdateChannel.saved
         f.timeMachinePermission = await TimeMachinePermission.isAllowed()
         f.version = BuildInfo.current.shortVersion

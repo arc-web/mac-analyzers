@@ -22,25 +22,60 @@ and handles it on autopilot:
 - **It cleans rebuildable junk on a schedule** — caches, build leftovers,
   abandoned background servers: things your tools recreate on their own. The
   scheduled cleans **never touch your documents**, photos, or projects.
-- **Anything that touches your own files is opt-in and reviewed first** —
-  old downloads and screenshots, apps you have not opened in months, old
-  recordings. You start it, you see the list, you untick what you want to
-  keep, and what you approve goes to the **Trash**, where the app's Undo
-  screen (or Finder's Put Back) can bring it straight back. Files that live
-  only in iCloud are never moved at all.
+- **Cleaning up your own files is something you start, and it shows you a
+  preview first** — old downloads and screenshots, apps you have not opened
+  in months, old recordings. You start it, you see the list, you untick what
+  you want to keep, and what you approve goes to the **Trash**, where the
+  app's Undo screen (or Finder's Put Back) can bring it straight back. Files
+  that live only in iCloud are never moved at all. The scheduled jobs (below)
+  work differently: they apply by themselves, and only on the rebuildable
+  junk described there.
 - **It tells you what happened** in a normal macOS notification — click it to
   see exactly what was done and why. **Every action is written down.**
 - **The app is how you live with it**: a main window that shows where your
   memory and disk space go, what ran and what it did, and a menu-bar panel
   for a glance and a quick Stop or Quit — **no Terminal needed after
   setup**.
-- **Everything runs locally.** No account, no telemetry — nothing about your
-  machine ever leaves your machine.
-- Anything that deletes is **dry-run by default**: it shows you the plan and
-  does nothing until told to apply. In the app you can untick individual
+- **Everything runs locally.** No account and no telemetry. The few things
+  that do go out are listed under [What leaves your Mac](#what-leaves-your-mac).
+- **Every cleanup you start is a preview first.** It shows you the plan and
+  does nothing until you apply it. In the app you can untick individual
   items before applying, and the cleaners enforce that list themselves —
   they re-derive their own findings and intersect, so the set can only ever
   shrink against what you approved.
+
+### What runs by itself
+
+Installing sets up background jobs. Unlike the cleanups you start, these
+**apply by themselves, without a preview**, so nothing waits for your review.
+The Setup screen and the How It Works screen (Help menu) describe each one
+for your Mac as it is configured.
+
+- **The memory guard** runs all the time. It watches memory pressure, and
+  every 2 minutes (by default, and where a newer bash is installed) it makes a quiet pass that closes development tooling
+  that has sat unused. It never touches your apps or anything on the
+  protected list.
+- **The daily memory clean** (8:30 am) closes coding-agent servers whose
+  session has ended, development servers left running for more than a day
+  and headless test browsers left running for more than 2 hours, and, where
+  a newer bash than the one macOS ships is installed, other idle developer
+  tools, emulators and build daemons.
+- **The daily storage clean** (8:00 am) removes build folders nothing has
+  written to for a few days, trims Turborepo caches, clears the tool caches
+  you opted into, and, when Docker is already running (it never starts
+  Docker), prunes its stopped containers, unused networks and dangling
+  images.
+- **The deep storage clean** (every three days) does all of that and also
+  removes the `node_modules` folders of projects that have sat untouched
+  (with their changes saved in git), empties the npm cache, prunes what pnpm
+  no longer references, and removes every Docker image nothing uses. It
+  thins Time Machine's **local** snapshots on this Mac only after you gave
+  that permission on the Time Machine screen; the backups on your backup
+  disk are never touched. Projects something live runs from are left alone.
+
+None of these touch your documents, photos or projects. To change when the
+daily jobs run, open **Settings › Schedule**. To switch all the background
+jobs off together, use **Setup › Turn Off or Remove**.
 
 Born from a real incident: a 32 GB Mac Studio living at 25–28 GB used, swap
 87% full, freezing mid-meeting. Same machine, same day, after this toolkit:
@@ -51,7 +86,7 @@ reports.
 ## Install
 
 The scripts are the **engine**; the app is the **face**. Mac Analyzers needs
-**macOS 26 or later** and is built on your Mac from source, which takes three
+**macOS 27 or later** and is built on your Mac from source, which takes three
 steps:
 
 1. Install Apple's **free Command Line Tools** (no Xcode needed). In
@@ -188,24 +223,39 @@ home folder, so it lands at `~/mac-analyzers`, and double-click
 copy follows Releases only; to update it, unpack the next release over it
 and run `rebuild.command` again.
 
+## What leaves your Mac
+
+Nothing about your files, apps or usage is sent anywhere. These are the only
+network requests the app makes:
+
+- **The release check** — on launch and every 6 hours, one public request to
+  GitHub's list of releases.
+- **The Beta channel**, only if you chose it — every 6 hours, a GitHub
+  request that compares the commit your copy was built from with the
+  development branch, and a read of development's changelog.
+- **Install** — when you press it, `upgrade.command` pulls the new version
+  from GitHub.
+
 ## What's inside
 
 | | Tool | What it does | Touches anything? |
 |---|---|---|---|
-| 🖥️ | `app/` — **Mac Analyzers** app | the product's face: a main window with Overview, Activity, Monitor, every storage cleanup as a reviewed preview, system audits, Trends and Undo; a menu-bar panel with per-app Stop/Quit; actionable native notifications; settings, editable schedules and update channels | writes only its own marked block in `config.local.sh` (+ schedule edits into its own launchd plists); cleanups act only on what you approve |
+| 🖥️ | `app/` — **Mac Analyzers** app | the product's face: a main window with Overview, Activity, Monitor, every storage cleanup you start as a preview you review first, system audits, Trends and Undo; a menu-bar panel with per-app Stop/Quit; actionable native notifications; settings, editable schedules and update channels | writes only its own marked block in `config.local.sh` (+ schedule edits into its own launchd plists); cleanups you start act only on what you approve; the scheduled jobs apply by themselves |
 | 🔍 | `memory-analyzer/analyze.sh` | "Why is RAM at N GB?" — Activity-Monitor-style breakdown, compressor/swap truth, per-app rollup, CPU/energy, diagnosis with verdicts | never — read-only report |
 | 🛡️ | `memory-analyzer/memory-guard.sh` | always-on listener: alerts on memory-pressure, kills a runaway dev process before the machine locks up. Meeting apps, browsers, editors are never touched | kills dev tooling only |
-| 🧹 | `memory-analyzer/memory-auto-clean.sh` | daily reaper: orphaned MCP/agent servers, dev servers forgotten since yesterday, stale headless browsers | with `--apply` |
+| 🧹 | `memory-analyzer/memory-auto-clean.sh` | daily reaper: orphaned MCP/agent servers, dev servers forgotten since yesterday, stale headless browsers | previews by default; the scheduled daily job runs it with `--apply` |
 | 🔴 | `memory-analyzer/memory-reclaim.sh` | the "free my RAM **now**" button — reboot effect without rebooting; optionally ⌘Q's heavy apps gracefully | with `--apply` |
 | 💾 | `storage-analyzer/analyze.sh` | categorized disk report: caches, node_modules, Docker, per-app footprints, apps-by-last-used | never — read-only report |
-| 🗑️ | `storage-analyzer/cleanup.sh` + `storage-auto-clean.sh` | interactive deep clean + scheduled automation-safe sweep (protects active work) | dry-run default |
+| 🗑️ | `storage-analyzer/cleanup.sh` + `storage-auto-clean.sh` | interactive deep clean + scheduled automation-safe sweep (protects active work) | previews by default; the scheduled daily and deep jobs run it with `--apply` |
 | ⏪ | `storage-analyzer/tm-reclaim.sh` | releases the Time Machine local snapshots that pin just-deleted blocks (the "I freed 40 GB but df didn't move" fix) | snapshots only |
 | 🔎 | `storage-analyzer/login-items-audit.sh` | finds login items / launch agents whose app was uninstalled — mechanically verified, two confidence classes | dry-run default |
 | 💡 | `storage-analyzer/spotlight-audit.sh` | Spotlight sanity: is the reindex expected or stuck, and which dev dirs (node_modules, build trees) is it wastefully indexing — fences them reversibly | dry-run default |
 | 🧺 | `storage-analyzer/temp-clean.sh` | what's really in /tmp, /var and your AI agents' folders (Claude Code, Codex, npx MCP servers): mounted disk images told apart from real usage, live sessions and open files protected, history sized but never touched | dry-run default · Trash, permanent opt-in |
 
 Every script double-clicked in Finder opens an **interactive menu**
-(preview → confirm). Flags skip the menu — that's how the launchd agents run.
+(preview, then confirm). Flags skip the menu — that's how the launchd agents
+run, and the scheduled ones pass `--apply`, so they act without a preview
+(see [What runs by itself](#what-runs-by-itself)).
 Every run logs exactly how it was invoked.
 
 ## Layout
@@ -245,7 +295,11 @@ every login. More: [the sick-machine report](examples/memory-report-sick.md) ·
 
 ## Safety design
 
-- **Analyzers are read-only. Cleaners are dry-run until you say `--apply`.**
+- **Analyzers are read-only. A cleaner you run yourself is a preview until
+  you say `--apply` (the app's Apply button). The scheduled background jobs
+  are the exception: they are installed with `--apply` and act on their own,
+  limited to the rebuildable junk listed under
+  [What runs by itself](#what-runs-by-itself).**
 - The guard's kill authority is a **narrow allowlist** (node/npx/bun,
   bundlers, test runners, headless browsers) minus a **protect list that
   always wins** (meeting apps, browsers, editors, containers, screen
@@ -295,7 +349,7 @@ lives.
 ## The app
 
 `app/` is **Mac Analyzers**, a native SwiftUI Mac app (SPM package, Swift 6,
-macOS 26) — the face on the script engine. Every screen reads the same way:
+macOS 27) — the face on the script engine. Every screen reads the same way:
 the kinds of thing it shows are tabs with a count, rows are grouped under
 the app, project or day they belong to with a total, and a group opens to
 show what is in it.
@@ -338,6 +392,17 @@ show what is in it.
   a program; it offers to open Monitor instead); a Memory tab with a live
   memory-pressure graph and the same figures as Activity Monitor's memory
   footer; running jobs; and the installed version.
+- **First launch and Help** — on a new install, a short **Welcome** window
+  shows what the app will do on your Mac with your own numbers, turns on the
+  background protection, shows the Memory Guard plan against what is running
+  right now, and walks you through notifications and Full Disk Access, with
+  Not Now on every step (Show Welcome Again… in the Help menu starts it
+  over). **Setup** is one screen of your current configuration, in three tabs
+  (Permissions, Background and Protection), with where each thing stands and
+  Turn Off or Remove on its toolbar. **How It Works**, in the Help menu,
+  explains each part with your Mac's own numbers, including what each
+  scheduled clean does by itself. **What's New** lists each new feature of a
+  release, grouped by the screen it belongs to.
 - **Settings** — Memory, Storage, Notifications and Schedule (editable clean
   times that survive reinstalls and upgrades). They write a clearly-marked
   managed block into `config.local.sh`; anything you wrote outside the

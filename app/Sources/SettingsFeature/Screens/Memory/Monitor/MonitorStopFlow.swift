@@ -30,6 +30,10 @@ final class MonitorStopFlow {
     private(set) var planned: MemoryStop.Pending?
     /// Said in the Quit dialog when what runs inside the app could not be told yet.
     private(set) var quitCaution: String?
+    /// Said first in the Quit dialog when Mac Analyzers never quits the app by itself (Never Close, a Connection Tool, in front).
+    private(set) var quitProtection: String?
+    /// Said first in a single process's Stop dialog when a live coding session is part of it or runs below it.
+    private(set) var processProtection: String?
     /// Step two of a stop: what is still running, offered for Force Stop. Each is its own confirmation.
     private(set) var forceOffer: MemoryStop.Pending?
     private var forceQueue: [MemoryStop.Pending] = []
@@ -39,18 +43,21 @@ final class MonitorStopFlow {
         switch stop {
         case .none, .unavailable:
             break
-        case .quitApp(let name, let identities, let count, let bytes, _):
+        case .quitApp(let name, let identities, let count, let bytes, _, let protection):
             // the sessions inside the app are read live when the dialog opens, like a program's reach
             let live = MemoryStop.quitReach(of: identities, name: name)
             quitCaution = live.caution
+            quitProtection = protection
             pending = .quitApp(name: name, identities: identities, count: count, bytes: bytes, hosted: live.hosted)
         case .stopProgram(let program):
             beginProgram(program)
         case .stopProcess(let process, let identity):
+            // what protects it is read from the live process table now, like a program's reach
+            processProtection = MemoryStop.protectionText(ofProcess: process)
             pending = .stopProcess(process, identity)
         case .choosePrograms(let group, let programs):
             // one program that can be stopped is just that program: no list to choose from
-            let stoppable = programs.filter(\.isStoppable)
+            let stoppable = programs.filter(\.isStoppableByPerson)
             if programs.count == 1, let only = stoppable.first {
                 beginProgram(only)
             } else {
@@ -62,7 +69,7 @@ final class MonitorStopFlow {
     /// The confirmation for one program says how many processes it will really reach,
     /// computed now; a program the rules refuse never reaches a dialog.
     private func beginProgram(_ program: StopTarget) {
-        switch MemoryStop.plan(target: program) {
+        switch MemoryStop.plan(target: program, asPerson: true) {
         case .refused(let why), .needsChoice(let why, _):
             notice = why
         case .confirm(let plan):
@@ -84,7 +91,13 @@ final class MonitorStopFlow {
             if let plan = planned { run([plan]) }
             planned = nil
         case .stopProcess(let process, let identity):
-            switch GuardControl.stopProcess(process, identity: identity) {
+            // the person chose it, in a dialog that named what protects it; a session that started meanwhile was not named
+            if processProtection == nil, let now = MemoryStop.protectionText(ofProcess: process) {
+                _ = now
+                notice = "A live coding session became part of \(process.friendlyName) while you were deciding, so nothing was stopped. Press Stop again to see what it would end."
+                return
+            }
+            switch GuardControl.stopProcess(process, identity: identity, overridingProtection: true) {
             case .stopped: break
             case .gone: report(asked: 1, reached: 0)
             case .refused(let why): notice = why
@@ -92,8 +105,8 @@ final class MonitorStopFlow {
         case .choose:
             var plans: [MemoryStop.Pending] = []
             var refused: [String] = []
-            for program in chosen.filter(\.isStoppable) {
-                switch MemoryStop.plan(target: program) {
+            for program in chosen.filter(\.isStoppableByPerson) {
+                switch MemoryStop.plan(target: program, asPerson: true) {
                 case .confirm(let plan): plans.append(plan)
                 case .refused(let why), .needsChoice(let why, _): refused.append(why)
                 }
@@ -163,6 +176,7 @@ struct MonitorStopDialogs: ViewModifier {
         content
             .confirmationDialog(title, isPresented: dialogShown, titleVisibility: .visible) {
                 if let pending = flow.pending, !isChoice(pending) {
+                    // always destructive-styled; a protected one says "Anyway", because Mac Analyzers would never do this by itself
                     Button(confirmLabel(pending), role: .destructive) { go(pending) }
                     Button("Cancel", role: .cancel) {}
                 }
@@ -235,9 +249,9 @@ struct MonitorStopDialogs: ViewModifier {
 
     private func confirmLabel(_ pending: MonitorStopFlow.Pending) -> String {
         switch pending {
-        case .quitApp(let name, _, _, _, _): "Quit \(name)"
-        case .stopProgram(let program): "Stop \(program.name)"
-        case .stopProcess(let process, _): "Stop \(process.friendlyName)"
+        case .quitApp(let name, _, _, _, _): flow.quitProtection == nil ? "Quit \(name)" : "Quit \(name) Anyway"
+        case .stopProgram(let program): flow.planned?.warning == nil ? "Stop \(program.name)" : "Stop \(program.name) Anyway"
+        case .stopProcess(let process, _): flow.processProtection == nil ? "Stop \(process.friendlyName)" : "Stop \(process.friendlyName) Anyway"
         case .choose: "Stop"
         }
     }
@@ -249,7 +263,8 @@ struct MonitorStopDialogs: ViewModifier {
             let who = helpers > 0
                 ? "\(name) and its \(helpers) helper process\(helpers == 1 ? "" : "es") will close"
                 : "\(name) will close"
-            var text = "\(who), giving back about \(MemorySize.text(bytes)). It will still ask before discarding unsaved work."
+            var text = (flow.quitProtection.map { "\($0) " } ?? "")
+                + "\(who), giving back about \(MemorySize.text(bytes)). It will still ask before discarding unsaved work."
             if let note = MemoryStop.hostedNote(hosted, appName: name) { text += " \(note)" }
             if let caution = flow.quitCaution { text += " \(caution)" }
             return text
@@ -257,7 +272,7 @@ struct MonitorStopDialogs: ViewModifier {
             // the reach was computed when the dialog opened, and says how many processes it is
             return "\(flow.planned?.detail ?? "It will be asked to stop.") About \(program.totalText) of memory is listed for it."
         case .stopProcess:
-            return "It will be asked to stop. Anything it is doing is interrupted."
+            return (flow.processProtection.map { "\($0) " } ?? "") + "It will be asked to stop. Anything it is doing is interrupted."
         case .choose, .none:
             return ""
         }

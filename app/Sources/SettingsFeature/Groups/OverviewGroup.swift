@@ -58,12 +58,12 @@ enum OverviewGroup {
     static let group = SidebarGroup(
         title: nil,
         rows: [
-            SidebarRow(overview, Names.Screen.overview, symbol: "gauge.with.dots.needle.33percent"),
-            SidebarRow(activity, Names.Screen.activity, symbol: "list.bullet.rectangle"),
+            SidebarRow(overview, Names.Screen.overview, symbol: "gauge.with.dots.needle.33percent", tint: .blue),
+            SidebarRow(activity, Names.Screen.activity, symbol: "list.bullet.rectangle", tint: .blue),
             // The row STAYS after everything is green — permissions get
             // withdrawn and background jobs get unloaded without asking.
             // Only the badge goes away.
-            SidebarRow(setup, Names.Screen.setup, symbol: "checklist.checked",
+            SidebarRow(setup, Names.Screen.setup, symbol: "checklist.checked", tint: .blue,
                        badge: { SetupBadge.shared.needsAttention ? "!" : nil }),
         ],
         root: screen,

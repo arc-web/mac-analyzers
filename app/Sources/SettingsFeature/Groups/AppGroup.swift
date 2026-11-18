@@ -11,6 +11,10 @@ enum AppRoute: Hashable, Codable, Sendable {
     case whatsNew(String)
     /// One How It Works topic.
     case topic(HowItWorksTopic)
+    /// What's New: one card per release.
+    case releases
+    /// One release's features, by its version ("next" for the unreleased section, "latest" for the newest shipped one).
+    case release(String)
 }
 
 /// Whether a newer release exists, for the Updates row's badge: read from the app's one
@@ -22,7 +26,8 @@ final class UpdateBadge {
     var updateAvailable: Bool { state?.isAvailable ?? false }
 }
 
-/// Updates, How It Works and Support.
+/// The Mac Analyzers screen and what it opens: Updates, What's New, How It Works and Support.
+/// None of them has a sidebar row: the item at the foot of the sidebar opens the app screen, which leads to the rest.
 ///
 /// A supporter build has no Support row: its badge at the foot of the
 /// sidebar is the way in, and the `support` target still lands on the
@@ -30,9 +35,13 @@ final class UpdateBadge {
 @MainActor
 enum AppGroup {
 
+    static let app = SectionID("app")
     static let updates = SectionID("updates")
     static let howItWorks = SectionID("howItWorks")
     static let support = SectionID("support")
+
+    /// The sections the foot-of-sidebar item stands for: it shows as selected on any of them.
+    static let sections: Set<SectionID> = [app, updates, howItWorks, support]
 
     static let group = SidebarGroup(
         title: Names.Group.app,
@@ -40,13 +49,14 @@ enum AppGroup {
         hidden: [support],
         root: screen,
         aliases: [
+            "app": .main(Location(app)),
             "update": .main(Location(updates)),
             "about": .main(Location(howItWorks)),
             "howItWorks": .main(Location(howItWorks)),
             "support": .main(Location(support)),
-            // the What's New list: scrolls to it, or also narrows it to the newest release
-            "updates:whatsNew": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew")),
-            "updates:whatsNew:latest": .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew:latest")),
+            // the What's New list of releases, or the newest release's own screen on top of it
+            "updates:whatsNew": .main(Location(updates, path: [.app(.releases)])),
+            "updates:whatsNew:latest": .main(Location(updates, path: [.app(.releases), .app(.release("latest"))])),
         ],
         resolveDynamic: { target in
             if let link = whatsNewLink(target) { return link }
@@ -61,29 +71,30 @@ enum AppGroup {
         },
         load: nil)
 
-    /// `updates:whatsNew:<version>`: the first feature of that release on its own screen.
+    /// `updates:whatsNew:<version>`: the first feature of that release on its own screen, over the release and the list.
     private static func whatsNewLink(_ target: String) -> Resolution? {
         let prefix = "updates:whatsNew:"
         guard target.hasPrefix(prefix) else { return nil }
         let version = String(target.dropFirst(prefix.count))
         guard !version.isEmpty else { return nil }
-        return .main(Location(updates, path: [.app(.whatsNew("\(version)#0"))]))
+        return .main(Location(updates, path: [.app(.releases), .app(.release(version)), .app(.whatsNew("\(version)#0"))]))
     }
 
     private static var rows: [SidebarRow] {
         var rows = [
-            SidebarRow(updates, Names.Screen.updates, symbol: "arrow.down.circle",
-                       badge: { UpdateBadge.shared.updateAvailable ? "1" : nil }),
-            SidebarRow(howItWorks, Names.Screen.howItWorks, symbol: "questionmark.circle"),
+            SidebarRow(app, Names.app, symbol: "macwindow", tint: .pink, inSidebar: false),
+            SidebarRow(updates, Names.Screen.updates, symbol: "arrow.down.circle", tint: .pink, inSidebar: false),
+            SidebarRow(howItWorks, Names.Screen.howItWorks, symbol: "questionmark.circle", tint: .pink, inSidebar: false),
         ]
         #if !canImport(ProKit)
-        rows.append(SidebarRow(support, Names.Screen.support, symbol: "heart"))
+        rows.append(SidebarRow(support, Names.Screen.support, symbol: "heart", tint: .pink, inSidebar: false))
         #endif
         return rows
     }
 
     @ViewBuilder private static func screen(_ section: SectionID) -> some View {
         switch section {
+        case app: AppHomeView()
         case updates: UpdateSettingsView()
         case howItWorks: HowItWorksView()
         case support:
@@ -100,6 +111,8 @@ enum AppGroup {
         switch route {
         case .whatsNew(let id): WhatsNewDetailScreen(id: id)
         case .topic(let topic): TopicScreen(topic: topic)
+        case .releases: WhatsNewReleasesView()
+        case .release(let version): WhatsNewReleaseScreen(version: version)
         }
     }
 }

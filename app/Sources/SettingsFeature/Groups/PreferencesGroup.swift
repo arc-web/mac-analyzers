@@ -16,10 +16,10 @@ enum PreferencesGroup {
     static let group = SidebarGroup(
         title: Names.Group.settings,
         rows: [
-            SidebarRow(memory, Names.Screen.memorySettings, symbol: "memorychip"),
-            SidebarRow(storage, Names.Screen.storageSettings, symbol: "internaldrive.fill"),
-            SidebarRow(notifications, Names.Screen.notifications, symbol: "bell.badge"),
-            SidebarRow(schedule, Names.Screen.schedule, symbol: "calendar.badge.clock"),
+            SidebarRow(memory, Names.Screen.memorySettings, symbol: "memorychip", tint: .gray),
+            SidebarRow(storage, Names.Screen.storageSettings, symbol: "internaldrive.fill", tint: .gray),
+            SidebarRow(notifications, Names.Screen.notifications, symbol: "bell.badge", tint: .gray),
+            SidebarRow(schedule, Names.Screen.schedule, symbol: "calendar.badge.clock", tint: .gray),
         ],
         root: screen,
         aliases: [

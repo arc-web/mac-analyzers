@@ -83,3 +83,54 @@ private struct MonitorProbeView: View {
                        rowFor: { probe.model.row($0) }, begin: { _ in }, open: { _ in }) { _ in EmptyView() }
     }
 }
+
+/// Monitor's stop sheet on programs given to it, for `snapshot-runner --stop-sheet`: the same `MonitorStopSheet` the screen
+/// opens, so a render shows what a person is asked. Public only so SnapshotRunner can host it; the app people install never creates one.
+public struct MonitorStopSheetPreview: View {
+    let group: String
+    let programs: [StopTarget]
+    /// Every program a person may stop is ticked, as after Select All.
+    let ticked: Bool
+
+    public init(group: String, programs: [StopTarget], ticked: Bool = false) {
+        self.group = group
+        self.programs = programs
+        self.ticked = ticked
+    }
+
+    public var body: some View {
+        MonitorStopSheet(group: group, programs: programs,
+                         preticked: ticked ? Set(programs.filter(\.isStoppableByPerson).map(\.id)) : [],
+                         onCancel: {}, onStop: { _ in })
+    }
+}
+
+/// The lock cell at rest and with the pointer on it, side by side, for `snapshot-runner --lock-cell` (a render has no pointer).
+public struct MonitorLockCellPreview: View {
+    let row: MonitorRow
+
+    public init(row: MonitorRow) { self.row = row }
+
+    public var body: some View {
+        Form {
+            LabeledContent("At rest") { MonitorStopCell(row: row, verb: "Stop", help: "", action: {}) }
+            LabeledContent("Pointer on it") { MonitorStopCell(row: row, verb: "Stop", help: "", action: {}, showsButton: true) }
+            Text(row.lockTip ?? "").foregroundStyle(.secondary)
+        }
+        .formStyle(.grouped)
+    }
+}
+
+/// Monitor's details panel on a row given to it, for `snapshot-runner --lock-cell` (the panel of a row in a headless window is not drawn).
+public struct MonitorInspectorPreview: View {
+    let row: MonitorRow
+    @State private var model = MonitorModel()
+    @State private var navigator = Navigator(initial: SectionRegistry.home)
+
+    public init(row: MonitorRow) { self.row = row }
+
+    public var body: some View {
+        MonitorInspector(model: model, row: row, begin: { _ in }, showDetails: { _ in })
+            .environment(navigator)
+    }
+}

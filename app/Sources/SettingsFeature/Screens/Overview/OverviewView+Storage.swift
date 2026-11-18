@@ -23,7 +23,7 @@ extension OverviewView {
                 // only while the newest cleanup run was a preview; after an apply there is nothing to show
                 if let reclaimable = week.latestReclaimableBytes {
                     OverviewValueRow(label: "Can Be Reclaimed", value: ByteSize.format(reclaimable),
-                                     action: { navigator.open(target: "caches:projects") },
+                                     action: { navigator.open(target: "caches") },
                                      caption: "From the latest preview. Nothing is deleted until you review it.")
                 }
                 OverviewValueRow(label: "Removed This Week", value: ByteSize.format(week.storageFreedBytes),

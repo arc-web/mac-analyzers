@@ -7,8 +7,7 @@ import SwiftUI
 ///     ToolbarItem { Button("Audit", systemImage: "checklist") { ... } }.toolbarRank(.primary)   // stays
 ///     ToolbarItem { Button("Export…", systemImage: "square.and.arrow.up") { ... } }.toolbarRank(.secondary)  // leaves first
 ///
-/// `visibilityPriority` is macOS 26.1+, so the check lives here and nowhere else. On a Mac
-/// before 26.1 the rank does nothing and the system's own overflow order applies.
+/// One name for the two ranks a screen's toolbar items have, so every screen ranks the same way.
 enum ToolbarRank {
     /// Stays visible as long as the system allows.
     case primary
@@ -18,10 +17,6 @@ enum ToolbarRank {
 
 extension ToolbarContent {
     @ToolbarContentBuilder func toolbarRank(_ rank: ToolbarRank) -> some ToolbarContent {
-        if #available(macOS 26.1, *) {
-            self.visibilityPriority(rank == .primary ? .high : .low)
-        } else {
-            self
-        }
+        self.visibilityPriority(rank == .primary ? .high : .low)
     }
 }

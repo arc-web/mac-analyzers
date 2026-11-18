@@ -2,9 +2,10 @@
 
 Shell-script toolkit (bash, macOS-only, no dependencies — every script MUST
 run under the bash macOS ships, `/bin/bash` 3.2; see the bash rule below) plus one compiled
-part: the SwiftUI menu-bar app in `app/` (SPM, Swift 6, macOS 26).
+part: the SwiftUI menu-bar app in `app/` (SPM, Swift 6, macOS 27).
 Read `CONTRIBUTING.md` first — its **safety invariants are hard rules**:
-analyzers read-only, cleaners dry-run by default, guard kills dev-tooling only,
+analyzers read-only, cleaners dry-run by default when run by hand (the scheduled
+launchd jobs pass `--apply` and act by themselves), guard kills dev-tooling only,
 protect list always wins, live AI-session exemption stays, personal values go
 through `config.local.sh` (never hardcoded).
 
@@ -107,7 +108,23 @@ through `config.local.sh` (never hardcoded).
   (`SettingsFeature/Shared/PaneScaffold.swift`); a screen that shows data (a
   table, a list, a review) is a `DataScreen`
   (`SettingsFeature/Shared/DataScreen.swift`), which fills the window, carries
-  the title and subtitle. A screen never draws its own empty, failed or
+  the title and subtitle. A screen that leads to others (a hub: Overview, Disk) opens with
+  `HubHeader` (`SettingsFeature/Shared/HubHeader.swift`: the `PaneHeader` tile, title and
+  one line, then its nested areas as rows that open them through the `Navigator`) as the
+  first item INSIDE its scroll content; a screen that is a table, a list or a review
+  (Monitor, Activity, Guard, a run) never has one and starts with its data.
+  The app-level screens (Updates, What's New, How It Works, Support) have no sidebar rows
+  (`SidebarRow(inSidebar: false)` keeps the row for names and icons): the item at the foot of
+  the sidebar (`Shell/SidebarVersionItem.swift`) opens the Mac Analyzers screen
+  (`Screens/App/AppHomeView.swift`, deep link `app`), a hub that leads to them, and shows as
+  selected on all of them (`AppGroup.sections`). What's New is one card per release
+  (`WhatsNewReleasesView`), each pushing `WhatsNewReleaseScreen`.
+  A sidebar row's icon is the shared `IconTile` in its section's system colour
+  (`SidebarRow.tint`, one colour per group: system colours that follow the user's accent
+  and light or dark, never a hex value). `.listItemTint` was tried first and the system
+  drew every glyph grey in this app, so do not swap the tile for it without a render of
+  both appearances showing colour.
+  A screen never draws its own empty, failed or
   loading state: it is `EmptyState` or `LoadingState`
   (`SettingsFeature/Shared/ScreenState.swift`: the system's
   `ContentUnavailableView` and `ProgressView`, filling the space the screen has
@@ -386,7 +403,7 @@ through `config.local.sh` (never hardcoded).
   the titles do not all fit, tabs give them up one at a time and none is
   ever hidden; a zero count is not drawn. Never measure widths by hand or
   swap in a menu. A screen's toolbar is for its actions, each with icon
-  and title (only search may be an icon).
+  and title (only search may be an icon). The details panel's toggle is Details with `info.circle`, never `sidebar.trailing`: a second sidebar symbol next to the window's own sidebar button reads as two sidebar buttons.
 - **One table for rows that open: `OutlineTable`** (2026-11-11, after
   measuring every SwiftUI hierarchical control — `Table` with
   `DisclosureTableRow`, `Table(children:)`, `List` with `OutlineGroup`,
@@ -424,6 +441,13 @@ through `config.local.sh` (never hardcoded).
   the toolbar backdrop — light band, doubled title); no
   `.scrollEdgeEffectStyle(.hard)` in the Settings window;
   `.listSectionSpacing` is iOS-only.
+- **A lock guards automatic actions only; the person can stop anything they own.** What Memory Guard, the cleanups, the
+  menu-bar panel and notification actions leave alone (a live coding session, the Never Close list, a Connection Tool; the app in front is not asked in Monitor, where it is always Mac Analyzers) is never a reason for Monitor to withhold Stop or Quit. Monitor offers it on every row that runs as
+  the person's own account, and the confirmation says first why it is normally protected and what may be lost (the button
+  is destructive-styled, "Anyway"). Only another account's, macOS's own, a terminal session and Mac Analyzers itself (its own process, and the program that started it) have
+  no button, and the row says why, decided when the row is built and again at the stop. The person's path is the separate `asPerson` / `overridingProtection` parameter
+  (`MemoryStop.plan(target:asPerson:)`, `GuardControl`'s stop calls); every default stays refusing, so an automatic path
+  never reaches it. `agent-runner --probe-stop-targets` proves both sides.
 
 ## Branches, releases, upgrades
 

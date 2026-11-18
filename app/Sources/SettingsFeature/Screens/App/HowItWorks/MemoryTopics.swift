@@ -79,6 +79,21 @@ extension HowItWorksTopic {
                 buttons: [.init(title: "Open \(Names.Screen.memoryGuard)", target: "guard"),
                           .init(title: Names.HowItWorks.change, target: "memory")])
 
+        case .rowLocks:
+            return TopicContent(
+                summary: "A lock means Memory Guard and the cleanups never stop that row by themselves. You still can.",
+                does: [
+                    "A lock on a row in the Monitor is about automatic actions only. Hover the lock and it turns into the row's Stop or Quit button; the confirmation then says why the row is normally protected and what you could lose.",
+                    "A row shows a lock when it is part of, or holds, a live coding session; when you put it on your Never Close list or it is on the built-in never list; when it is a Connection Tool that may be how you reach this Mac; or when Mac Analyzers could not read its list of coding agents and so cannot tell.",
+                    "A group is locked when some of its programs are. You can stop the whole group, or open it and stop one program or one process; a member is never locked just because its group is.",
+                ],
+                never: [
+                    "Memory Guard, the cleanups, the menu-bar panel and notification actions keep honouring every lock exactly as before.",
+                    "Some rows have no button at all, and say why instead: macOS's own processes, another account's, and a terminal session, which ignores a polite stop (close its window to end it), and Mac Analyzers itself and the program that started it.",
+                ],
+                written: ["A stop you confirm is a polite request first; if anything is still running, you are asked separately about Force Stop."],
+                buttons: [.init(title: "Open \(Names.Screen.monitor)", target: "monitor")])
+
         case .cleanup:
             let label = GuardControl.memoryCleanLabel
             let scheduled = f.memoryCleanDoes(label) ?? f.notScheduled(label)

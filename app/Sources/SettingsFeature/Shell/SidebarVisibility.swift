@@ -30,8 +30,8 @@ enum SidebarVisibility {
     }
 }
 
-/// The sidebar button, next to the traffic lights: on while the sidebar is shown, off while it is hidden, with a
-/// tooltip that says what a press does. A `Toggle`, so VoiceOver reads on or off.
+/// The sidebar button, next to the traffic lights, with a
+/// tooltip that says what a press does.
 struct SidebarToggleItem: ToolbarContent {
     let shown: Bool
     /// The window's own show/hide (the same the View menu runs): the button never sets the visibility itself.
@@ -42,15 +42,13 @@ struct SidebarToggleItem: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItem(placement: placement) {
-            Toggle(isOn: Binding(get: { shown }, set: { _ in toggle() })) {
+            // A plain toolbar button, as Finder's: no filled "on" state and no colour of its own, so it reads the same in
+            // light and dark and only the system's own hover and press show on it. VoiceOver hears whether it is shown.
+            Button(action: toggle) {
                 Label(Names.Sidebar.title, systemImage: "sidebar.leading")
-                    // the icon is the ordinary toolbar icon in both states; "on" is the toolbar's own selected look
-                    .foregroundStyle(.primary)
             }
-            .toggleStyle(.button)
             .labelStyle(.iconOnly)
-            // no accent colour: a toggle that is on would fill with the app's accent (blue); neutral keeps it the native grey tile
-            .tint(Color.secondary)
+            .accessibilityValue(shown ? Names.Sidebar.shownValue : Names.Sidebar.hiddenValue)
             .help(shown ? Names.Sidebar.hide : Names.Sidebar.show)
             // hovering the button while the sidebar is hidden shows it as an overlay, like the edge does
             .onHover { inside in

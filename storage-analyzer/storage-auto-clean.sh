@@ -268,6 +268,20 @@ repo_root() {
   return 1
 }
 
+# Build output is removed only when git says so (rule, owner): the path is
+# inside a git checkout, git ignores it, and git tracks nothing under it. A
+# folder outside any checkout, or one a repo commits (a `build/` of scripts),
+# is never build output here, whatever its name.
+gitignored_output() {  # <path> -> exit 0 when it may go
+  local r
+  r="$(repo_root "$(dirname "$1")")" || return 1
+  git -C "$r" check-ignore -q -- "$1" 2>/dev/null || return 1
+  [[ -z "$(git -C "$r" ls-files -- "$1" 2>/dev/null | head -1)" ]]
+}
+# Every .composure/workspaces/ folder, in every repo, is an agent's workspace:
+# nothing in it is ever cleaned (find operands, put first in a find).
+WS_PRUNE=( -path '*/.composure/workspaces' -prune -o )
+
 # is_idle <dir> <days>  -> exit 0 if NO meaningful file modified within <days>
 # (ignores heavy regenerable dirs so a fresh build cache doesn't mark a repo active)
 is_idle() {
@@ -413,9 +427,9 @@ for root in $ROOTS; do
     case "$d" in */node_modules/*) continue ;; esac
     # only if the cache dir itself is older than the threshold (no recent build)
     if [[ -z "$(find "$d" -prune -mtime "-${CACHE_AGE_DAYS}" -print 2>/dev/null)" ]]; then
-      reclaim "$d"
+      gitignored_output "$d" && reclaim "$d"
     fi
-  done < <(find "$root" -type d \( "${BUILD_CACHE_FIND[@]}" \) -prune 2>/dev/null)
+  done < <(find "$root" "${WS_PRUNE[@]}" -type d \( "${BUILD_CACHE_FIND[@]}" \) -prune -print 2>/dev/null)
 done
 
 # ---------- 1.2 Turborepo cache cap (both modes) ----------
@@ -436,6 +450,7 @@ for root in $ROOTS; do
   [[ -d "$root" ]] || continue
   while IFS= read -r cdir; do
     case "$cdir" in */node_modules/*) continue ;; esac
+    gitignored_output "$cdir" || continue
     trepo="$(repo_root "$cdir" || dirname "$(dirname "$cdir")")"
     if turbo_busy "$trepo"; then log "  (turbo is running in ${trepo} — its cache left alone this run)"; continue; fi
     entries=( "$cdir"/*.tar.zst "$cdir"/*.tar.gz )
@@ -448,7 +463,7 @@ for root in $ROOTS; do
       reclaim "$entry"
       [[ "$DRY_RUN" -eq 0 && ! -e "$entry" ]] && rm -f "${entry%.tar.*}-meta.json"
     done < <(ls -t "${entries[@]}")
-  done < <(find "$root" -type d -path "*/.turbo/cache" -prune 2>/dev/null)
+  done < <(find "$root" "${WS_PRUNE[@]}" -type d -path "*/.turbo/cache" -prune -print 2>/dev/null)
 done
 
 # ---------- 1.5 Extra cache globs from config (both modes) ----------
@@ -471,231 +486,65 @@ fi
 
 # ---------- 1.8 Git worktrees (deep mode, opt-in) ----------
 # A worktree is a second checkout of a repo — coding agents create them by
-# the dozen (.composure/workspaces, .claude/worktrees, …). Once one has been
-# idle N days (ANALYZERS_WORKTREE_IDLE_DAYS; 0 or unset = this section is
-# off) it can go, merged or not, because nothing in it is lost:
-#   * its commits stay on its branch — `git worktree add <path> <branch>`
-#     brings the checkout back (a detached checkout goes only when a branch
-#     or tag already holds its commit);
-#   * uncommitted and untracked changes are parked as a commit pinned under
-#     refs/parked/<worktree>-<time> (built with commit-tree, so the repo's
-#     shared stash list is never written to and gc never expires them);
-#   * ignored files that aren't build output (.env, local databases, keys,
-#     planning notes) are copied to reports/storage/parked-worktrees/ first.
-# Every removal lands in reports/storage/worktree-removals.md with the exact
-# commands that undo it. Never removed: anything on `main` (the branch, or a
-# worktree folder named main), the primary checkout, locked worktrees, ones
-# with submodules, and anything a process or a terminal/agent session runs
-# from or sits in.
+# the dozen. Once one has been idle N days (ANALYZERS_WORKTREE_IDLE_DAYS; 0 or
+# unset = this section is off), its build output is cleared — and nothing
+# else. The rules:
+#   * every .composure/workspaces/ folder, in every repo, is skipped whole
+#     (an agent's workspace is its own to manage);
+#   * a worktree with any uncommitted or untracked change (`git status
+#     --porcelain` not empty) is never touched — nothing is parked, nothing
+#     is removed;
+#   * the checkout itself is never removed: only paths git ignores AND that
+#     are build output by name (node_modules, .next, dist, .build, …) go.
+#     Source files, tracked or not, and ignored files that are not build
+#     output (.env, local databases, keys, notes) always stay.
+# Also never touched: anything on `main` (the branch, or a worktree folder
+# named main), the primary checkout, locked worktrees, and anything a process
+# or a terminal/agent session runs from or sits in.
 WT_IDLE_DAYS="${WT_IDLE_DAYS_FLAG:-${ANALYZERS_WORKTREE_IDLE_DAYS:-0}}"
-WT_PARK_MAX_MB="${ANALYZERS_WORKTREE_PARK_MAX_MB:-1024}"
 WT_LIST=""
 if [[ "$MODE" == "deep" && "$WT_IDLE_DAYS" -gt 0 ]]; then
-  group "1.8 Git worktrees idle >${WT_IDLE_DAYS}d — main is never removed"
+  group "1.8 Build output of git worktrees idle >${WT_IDLE_DAYS}d — checkouts and source are never removed"
   WT_LIST="$(mktemp -t autoclean-wt)"
-  WT_PARK_ROOT="${LOG_DIR}/parked-worktrees/$(date +%Y-%m-%d)"
-  WT_MANIFEST="${LOG_DIR}/worktree-removals.md"
-  wt_kept=0; wt_main=0; wt_stale=0
-  # Where a worktree's commits already live — reported, not required: the
-  # branch keeps them either way. Merged into what the primary checkout has
-  # checked out, or any base branch (development, develop, main, master;
-  # local or origin), squash and rebase merges included.
-  wt_targets() {  # <repo> -> merge targets, one per line
-    local b r
-    echo "HEAD"
-    for b in development develop main master; do
-      for r in "refs/heads/$b" "refs/remotes/origin/$b"; do
-        git -C "$1" rev-parse -q --verify "$r" >/dev/null 2>&1 && echo "$r"
-      done
-    done
-  }
-  wt_label() {  # <repo> <target>
-    if [[ "$2" == "HEAD" ]]; then
-      echo "the current checkout ($(git -C "$1" rev-parse --abbrev-ref HEAD 2>/dev/null))"
-    else
-      echo "${2#refs/*/}"
-    fi
-  }
-  wt_merged_into() {  # <repo> <sha> -> label of the first target that has it
-    local t tree
-    for t in $(wt_targets "$1"); do
-      git -C "$1" merge-base --is-ancestor "$2" "$t" 2>/dev/null \
-        && { wt_label "$1" "$t"; return 0; }
-    done
-    # Squash and rebase merges leave no ancestry. Trial-merge instead (nothing
-    # is written to any branch): if merging the worktree's commit into the
-    # target yields the target's own tree, its changes are already in.
-    for t in $(wt_targets "$1"); do
-      tree="$(git -C "$1" merge-tree --write-tree "$t" "$2" 2>/dev/null | head -1)"
-      [[ -n "$tree" && "$tree" == "$(git -C "$1" rev-parse "$t^{tree}" 2>/dev/null)" ]] \
-        && { echo "$(wt_label "$1" "$t") (squash or rebase merge)"; return 0; }
-    done
-    return 1
-  }
-  # Ignored files are invisible to `status --porcelain`, but `worktree remove`
-  # deletes them — and an .env, a local database or a key is on no branch and
-  # no remote. Build output is regenerated; everything else is copied aside.
-  WT_REBUILDABLE='node_modules|\.next|\.turbo|dist|build|out|\.output|\.vite|\.svelte-kit|\.nuxt|\.parcel-cache|\.cache|coverage|\.nyc_output|\.venv|venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.tox|target|\.expo|\.gradle|Pods|DerivedData|\.build|\.swiftpm|\.pnpm-store|\.eslintcache|\.DS_Store|next-env\.d\.ts|.*\.tsbuildinfo|.*\.pyc|.*\.log|\.wrangler|test-results|playwright-report'
-  # whole relative paths that are rebuildable or per-session noise
-  WT_REBUILDABLE_PATH='(.*/)?\.moon/cache|\.composure/(graph|current-task\.json|last-health-check|orient-shown|task-sync-debug\.jsonl)'
-  wt_precious_ignored() {  # <worktree> -> ignored paths (relative) that are NOT rebuildable
+  wt_kept=0; wt_main=0; wt_stale=0; wt_ws=0; wt_dirty=0
+  WT_REBUILDABLE='node_modules|\.next|\.turbo|dist|build|out|\.output|\.vite|\.svelte-kit|\.nuxt|\.parcel-cache|\.cache|coverage|\.nyc_output|\.venv|venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.tox|target|\.expo|\.gradle|Pods|DerivedData|\.build|\.swiftpm|\.eslintcache|.*\.tsbuildinfo|\.wrangler|test-results|playwright-report'
+  wt_build_output() {  # <worktree> -> ignored paths (relative) that are build output by name
     git -C "$1" status --porcelain -z --ignored=matching 2>/dev/null | tr '\0' '\n' \
       | sed -n 's/^!! //p' \
       | while IFS= read -r p; do
           p="${p%/}"
-          printf '%s\n' "${p##*/}" | grep -qxE -- "$WT_REBUILDABLE" && continue
-          printf '%s\n' "$p" | grep -qxE -- "$WT_REBUILDABLE_PATH" && continue
+          [[ -n "$p" ]] || continue
+          printf '%s\n' "${p##*/}" | grep -qxE -- "$WT_REBUILDABLE" || continue
+          # ask git once more, path by path: only what it ignores may go
+          git -C "$1" check-ignore -q --no-index -- "$p" 2>/dev/null || continue
+          [[ -z "$(git -C "$1" ls-files -- "$p" 2>/dev/null | head -1)" ]] || continue
           echo "$p"
         done
   }
-  wt_manifest() {  # <markdown table row>
-    if [[ ! -f "$WT_MANIFEST" ]]; then
-      printf '%s\n' "# Worktrees removed by storage auto-clean" "" \
-        "Each row says how to bring a worktree back exactly as it was: re-create the checkout on its branch, re-apply its parked changes, copy its local-only files back." "" \
-        "| When | Worktree | Branch | Parked changes | Local-only files | Restore |" \
-        "|---|---|---|---|---|---|" > "$WT_MANIFEST"
-    fi
-    printf '%s\n' "$1" >> "$WT_MANIFEST"
-  }
   wt_consider() {  # <repo> <worktree> <head-sha> <branch|""> <locked 0|1>
-    local repo="$1" wt="$2" sha="$3" br="$4" locked="$5"
-    local name why merged kb dirty precious pkb=0 ukb=0 park="" pcommit="" pin="" rel restore note tmpidx ptree
+    local repo="$1" wt="$2" br="$4" locked="$5" name rel out
     [[ -d "$wt" ]] || return 0
+    case "$wt/" in */.composure/workspaces/*) wt_ws=$((wt_ws+1)); return 0 ;; esac
     # linked worktrees carry a .git FILE; a .git directory is a primary checkout
     [[ -f "$wt/.git" ]] || return 0
     name="${wt##*/}"
-    # main is never removed — the branch, or a worktree folder named main
     if [[ "$br" == "main" || "$name" == "main" ]]; then wt_main=$((wt_main+1)); return 0; fi
     [[ "$locked" == "1" ]] && { wt_kept=$((wt_kept+1)); return 0; }
     is_runtime_root "$wt" && { wt_kept=$((wt_kept+1)); return 0; }
     is_idle "$wt" "$WT_IDLE_DAYS" || { wt_kept=$((wt_kept+1)); return 0; }
-    if [[ -n "$(git -C "$wt" submodule status 2>/dev/null)" ]]; then
-      wt_kept=$((wt_kept+1)); log "  (kept ${wt} — it has submodules; remove it by hand)"; return 0
+    if [[ -n "$(git -C "$wt" status --porcelain 2>/dev/null | head -1)" ]]; then
+      wt_dirty=$((wt_dirty+1)); log "  (left alone: ${wt} — it has uncommitted changes)"; return 0
     fi
-    if [[ -n "$br" ]]; then
-      if merged="$(wt_merged_into "$repo" "$sha")"; then why="${br} — merged into ${merged}"
-      else why="${br} — not merged yet; the branch keeps its commits"; fi
-    else
-      if [[ -z "$(git -C "$repo" for-each-ref --contains "$sha" --count=1 2>/dev/null)" ]]; then
-        wt_kept=$((wt_kept+1)); log "  (kept ${wt} — detached at a commit no branch or tag holds)"; return 0
-      fi
-      why="detached — its commit is already on a branch"
-    fi
-    dirty="$(git -C "$wt" status --porcelain 2>/dev/null | grep -c . || true)"
-    precious="$(wt_precious_ignored "$wt")"
-    if [[ -n "$precious" ]]; then
-      pkb="$(cd "$wt" && printf '%s\n' "$precious" | tr '\n' '\0' | xargs -0 du -sk 2>/dev/null | awk '{t += $1} END {print t + 0}')"
-      if (( pkb > WT_PARK_MAX_MB * 1024 )); then
-        wt_kept=$((wt_kept+1))
-        log "  (kept ${wt} — $(human "$pkb") of local-only files is over the ${WT_PARK_MAX_MB} MB parking limit)"
-        return 0
-      fi
-    fi
-    # untracked files are parked in the pinned commit too, so they get the same size cap
-    if [[ -n "$(git -C "$wt" ls-files -o --exclude-standard 2>/dev/null | head -1)" ]]; then
-      ukb="$(cd "$wt" && git ls-files -o --exclude-standard -z 2>/dev/null | xargs -0 du -sk 2>/dev/null | awk '{t += $1} END {print t + 0}')"
-      if (( ukb > WT_PARK_MAX_MB * 1024 )); then
-        wt_kept=$((wt_kept+1))
-        log "  (kept ${wt} — $(human "$ukb") of untracked files is over the ${WT_PARK_MAX_MB} MB parking limit)"
-        return 0
-      fi
-    fi
+    out="$(wt_build_output "$wt")"
+    [[ -n "$out" ]] || { wt_kept=$((wt_kept+1)); return 0; }
     echo "$wt" >> "$WT_LIST"
-    kb=$(du -sk "$wt" 2>/dev/null | cut -f1); kb="${kb:-0}"
-    if ! approved "$wt"; then log "  [SKIP]    not in approved set  $wt"; return 0; fi
-    TOTAL_KB=$((TOTAL_KB + kb))
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-      log "  [DRY]     $(printf '%10s' "$(human "$kb")")  $wt"
-      log "              ↳ ${why}"
-      [[ "$dirty" -gt 0 ]] && log "              ↳ ${dirty} uncommitted change(s) — parked as a pinned commit first (not in the shared stash)"
-      [[ -n "$precious" ]] && log "              ↳ $(printf '%s\n' "$precious" | grep -c .) local-only file(s), $(human "$pkb") — copied aside first: $(printf '%s\n' "$precious" | head -3 | tr '\n' ' ')"
-      return 0
+    # the late look: a session may have started in it since the run began
+    if [[ "$DRY_RUN" -eq 0 ]] && is_runtime_root "$wt" fresh; then
+      log "  [SKIP]    something started running in it just now  $wt"; return 0
     fi
-    # 1. copy local-only files aside
-    if [[ -n "$precious" ]]; then
-      # mirror the repo's path under $HOME, so two repos named alike never share a folder
-      park="${WT_PARK_ROOT}/${repo#"$HOME"/}/${name}"
-      while IFS= read -r rel; do
-        [[ -n "$rel" ]] || continue
-        if ! { mkdir -p "$park/$(dirname "$rel")" && ditto "$wt/$rel" "$park/$rel"; } 2>>"$LOG_FILE"; then
-          log "  [FAILED]  $(printf '%10s' "$(human "$kb")")  $wt"
-          log "              ↳ couldn't copy ${rel} aside — left as it was"
-          return 0
-        fi
-      done <<< "$precious"
-    fi
-    # 2. park uncommitted + untracked changes as a commit pinned under refs/parked/. It is built in a
-    #    throwaway index with commit-tree, so the repo's stash list (shared by every session and worktree,
-    #    where a bare `git stash pop` elsewhere would apply it, and where another session's entry could be
-    #    mistaken for ours) is never written to, and gc cannot expire it.
-    if [[ "$dirty" -gt 0 ]]; then
-      pin="refs/parked/$(printf '%s' "$name" | tr -c 'A-Za-z0-9_-' '-')-$(date +%Y%m%d-%H%M%S)"
-      tmpidx="$(mktemp -t wt-park-idx)"; rm -f "$tmpidx"
-      ptree="$(GIT_INDEX_FILE="$tmpidx" git -C "$wt" add -A >>"$LOG_FILE" 2>&1 \
-               && GIT_INDEX_FILE="$tmpidx" git -C "$wt" write-tree 2>>"$LOG_FILE")"
-      rm -f "$tmpidx"
-      pcommit=""
-      if [[ -n "$ptree" ]]; then
-        pcommit="$(printf 'auto-clean %s: uncommitted and untracked changes of %s (%s)\n' "$(date +%F)" "$name" "${br:-detached}" \
-                   | GIT_AUTHOR_NAME="mac-analyzers" GIT_AUTHOR_EMAIL="mac-analyzers@localhost" \
-                     GIT_COMMITTER_NAME="mac-analyzers" GIT_COMMITTER_EMAIL="mac-analyzers@localhost" \
-                     git -C "$wt" commit-tree "$ptree" -p HEAD 2>>"$LOG_FILE")"
-      fi
-      if [[ -z "$pcommit" ]] || ! git -C "$repo" update-ref "$pin" "$pcommit" >>"$LOG_FILE" 2>&1 \
-         || [[ "$(git -C "$repo" rev-parse -q --verify "${pin}^{commit}" 2>/dev/null)" != "$pcommit" ]]; then
-        log "  [FAILED]  $(printf '%10s' "$(human "$kb")")  $wt"
-        log "              ↳ couldn't park its uncommitted changes — nothing was changed, left as it was"
-        return 0
-      fi
-      # The live-use list was built once at the start of the run. A session or process may have started in this
-      # checkout since: look again, right before anything is cleared, and leave it alone if so (the pin is a
-      # harmless extra copy of what is still in the folder).
-      if is_runtime_root "$wt" fresh; then
-        log "  [SKIP]    $(printf '%10s' "$(human "$kb")")  $wt"
-        log "              ↳ something started running in it just now — left as it was (its changes are also pinned as ${pin})"
-        return 0
-      fi
-      # the changes are pinned; now clear the checkout so git will remove it without --force
-      if ! git -C "$wt" reset -q --hard HEAD >>"$LOG_FILE" 2>&1; then
-        log "  [FAILED]  $(printf '%10s' "$(human "$kb")")  $wt"
-        log "              ↳ git reset failed: its changes are still in the folder AND pinned as ${pin} — left as it was"
-        return 0
-      fi
-      if ! git -C "$wt" clean -fdq >>"$LOG_FILE" 2>&1 || [[ -n "$(git -C "$wt" status --porcelain 2>/dev/null)" ]]; then
-        log "  [FAILED]  $(printf '%10s' "$(human "$kb")")  $wt"
-        log "              ↳ the folder was reset to its branch tip, so its tracked edits now live ONLY in ${pin}; some untracked files could not be removed and stay in the folder — checkout kept. Put them back (edits, deletions and untracked files, all unstaged) with: git -C '${wt}' restore --source=${pin} --staged --worktree -- . && git -C '${wt}' reset -q"
-        return 0
-      fi
-    fi
-    # a clean checkout has nothing to clear, but the same late look applies before it is removed
-    if [[ "$dirty" -eq 0 ]] && is_runtime_root "$wt" fresh; then
-      log "  [SKIP]    $(printf '%10s' "$(human "$kb")")  $wt"
-      log "              ↳ something started running in it just now — left as it was"
-      return 0
-    fi
-    # 3. remove the checkout; the branch is never touched
-    if git -C "$repo" worktree remove "$wt" >>"$LOG_FILE" 2>&1; then
-      log "  [DELETED] $(printf '%10s' "$(human "$kb")")  $wt"
-      log "              ↳ ${why}"
-      [[ -n "$pcommit" ]] && log "              ↳ uncommitted and untracked changes parked as a commit, pinned as ${pin}"
-      [[ -n "$park" ]] && log "              ↳ local-only files copied to ${park}"
-      restore="\`git -C '${repo}' worktree add '${wt}' ${br:-$sha}\`"
-      [[ -n "$pcommit" ]] && restore="${restore}, then \`git -C '${wt}' cherry-pick --no-commit ${pin} && git -C '${wt}' reset -q\`"
-      [[ -n "$park" ]] && restore="${restore}, then \`ditto '${park}' '${wt}'\`"
-      wt_manifest "| $(date '+%Y-%m-%d %H:%M') | \`${wt}\` | ${br:-detached ${sha:0:10}} | ${pcommit:+\`${pin}\`} | ${park:+\`${park}\`} | ${restore} |"
-    else
-      # put the work back exactly as it was (apply the pinned commit by SHA: no stash list involved)
-      note=""
-      if [[ -n "$pcommit" ]]; then
-        if git -C "$wt" cherry-pick --no-commit "$pcommit" >>"$LOG_FILE" 2>&1 && git -C "$wt" reset -q >>"$LOG_FILE" 2>&1; then
-          git -C "$repo" update-ref -d "$pin" >>"$LOG_FILE" 2>&1
-        else
-          note=" — its changes could not be put back automatically and stay pinned as ${pin} (git -C '${wt}' cherry-pick --no-commit ${pin})"
-        fi
-      fi
-      log "  [FAILED]  $(printf '%10s' "$(human "$kb")")  $wt"
-      log "              ↳ git refused to remove it — left as it was${note}"
-    fi
+    while IFS= read -r rel; do
+      [[ -n "$rel" ]] && reclaim "$wt/$rel"
+    done <<< "$out"
   }
   for root in $ROOTS; do
     [[ -d "$root" ]] || continue
@@ -720,11 +569,10 @@ if [[ "$MODE" == "deep" && "$WT_IDLE_DAYS" -gt 0 ]]; then
                         first=0; wt="" ;;
         esac
       done < <(git -C "$repo" worktree list --porcelain 2>/dev/null; echo "")
-      [[ "$DRY_RUN" -eq 0 ]] && git -C "$repo" worktree prune 2>/dev/null
     done < <(find "$root" \( -name node_modules -o -name .composure -o -name .claude \) -prune \
                -o -type d -name .git -prune -print 2>/dev/null)
   done
-  log "  (kept ${wt_kept} worktree(s) — recent, live, locked, submodules, or too much local-only data; ${wt_main} on main, never removed)"
+  log "  (skipped ${wt_ws} in .composure/workspaces; left ${wt_dirty} with uncommitted changes alone; kept ${wt_kept} recent, live, locked or with nothing to clear; ${wt_main} on main)"
 fi
 
 # ---------- 2. node_modules of stale repos (deep mode only) ----------
@@ -740,7 +588,7 @@ if [[ "$MODE" == "deep" ]]; then
   for root in $ROOTS; do
     [[ -d "$root" ]] || continue
     while IFS= read -r nm; do
-      # already counted with its whole worktree in 1.8
+      # already handled with its worktree in 1.8
       if [[ -n "$WT_LIST" ]]; then
         in_wt=0
         while IFS= read -r w; do case "$nm" in "$w"/*) in_wt=1; break ;; esac; done < "$WT_LIST"
@@ -749,6 +597,7 @@ if [[ "$MODE" == "deep" ]]; then
       rr="$(repo_root "$nm" || true)"
       [[ -n "$rr" ]] || rr="$(dirname "$nm")"   # no git? use parent dir
       # already classified?
+      gitignored_output "$nm" || continue
       grep -qxF "$rr" "$STALE_LIST" 2>/dev/null && { reclaim "$nm"; continue; }
       grep -qxF "$rr" "$ACTIVE_LIST" 2>/dev/null && continue
       # classify this repo root once
@@ -758,7 +607,7 @@ if [[ "$MODE" == "deep" ]]; then
       elif is_idle "$rr" "$NM_AGE_DAYS"; then
         # idle by mtime — confirm clean git tree before trusting it (unless
         # the user opted out: node_modules never holds their work)
-        if [[ "$NM_REQUIRE_CLEAN" == "1" && -d "$rr/.git" ]]; then
+        if [[ "$NM_REQUIRE_CLEAN" == "1" && -e "$rr/.git" ]]; then
           if [[ -z "$(git -C "$rr" status --porcelain 2>/dev/null)" ]]; then
             verdict="stale"
           fi
@@ -771,7 +620,7 @@ if [[ "$MODE" == "deep" ]]; then
       else
         echo "$rr" >> "$ACTIVE_LIST"
       fi
-    done < <(find "$root" -type d -name node_modules -prune 2>/dev/null)
+    done < <(find "$root" "${WS_PRUNE[@]}" -type d -name node_modules -prune -print 2>/dev/null)
   done
   # grep -c prints 0 AND exits 1 when nothing matches, so `|| echo 0` printed it twice
   active_repos="$(grep -c . "$ACTIVE_LIST" 2>/dev/null || true)"

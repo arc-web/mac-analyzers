@@ -80,6 +80,8 @@ public struct MainWindowView: View {
         .onChange(of: navigator.section) { peek.dismiss() }
         // the Updates row's badge reads the one update state
         .task { UpdateBadge.shared.state = updates }
+        // a link that was asked for before this window was listening (a cold start)
+        .task { if let target = SettingsOpener.takePendingTarget() { DeepLinkRouter.open(target, in: navigator) } }
         .environment(navigator)
         .focusedSceneValue(\.navigator, navigator)
         .focusedSceneValue(\.sidebarCommands, SidebarCommandState(

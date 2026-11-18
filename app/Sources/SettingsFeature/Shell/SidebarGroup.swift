@@ -22,15 +22,23 @@ struct SidebarRow: Identifiable {
     let section: SectionID
     let title: String
     let symbol: String
+    /// The row's icon colour, one per section of the sidebar. A preference the system applies with the user's own
+    /// appearance (`.listItemTint(.preferred)`), never a fixed fill.
+    let tint: Color
+    /// False for a screen with no row of its own (Updates, How It Works, Support open from the app screen); the row stays
+    /// so What's New can name the screen and its icon.
+    var inSidebar = true
     var badge: (@MainActor () -> String?)?
 
     var id: SectionID { section }
 
-    init(_ section: SectionID, _ title: String, symbol: String,
+    init(_ section: SectionID, _ title: String, symbol: String, tint: Color, inSidebar: Bool = true,
          badge: (@MainActor () -> String?)? = nil) {
         self.section = section
         self.title = title
         self.symbol = symbol
+        self.tint = tint
+        self.inSidebar = inSidebar
         self.badge = badge
     }
 }

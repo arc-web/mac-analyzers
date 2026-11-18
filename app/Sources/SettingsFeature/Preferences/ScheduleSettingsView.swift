@@ -12,7 +12,8 @@ struct ScheduleSettingsView: View {
     @State private var deepDays = 3
     @State private var status: String?
     @State private var applying = false
-    private var facts: HowItWorksFacts? { HowItWorksModel.shared.facts }
+    /// Only what the captions read (settings and installed schedules), not the whole How It Works load.
+    @State private var facts: HowItWorksFacts?
 
     private static let memoryLabel = "com.mac-analyzers.memory-autoclean.daily"
     private static let storageLabel = "com.mac-analyzers.storage-autoclean.daily"
@@ -28,7 +29,7 @@ struct ScheduleSettingsView: View {
                                    displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
-                    Text(facts?.jobCaption(Self.memoryLabel) ?? Names.Setup.jobWhy(Self.memoryLabel))
+                    Text(caption(Self.memoryLabel))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -38,7 +39,7 @@ struct ScheduleSettingsView: View {
                                    displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
-                    Text((facts?.jobCaption(Self.storageLabel) ?? Names.Setup.jobWhy(Self.storageLabel)) + " Keep the two dailies offset so they never contend.")
+                    Text(caption(Self.storageLabel, then: "Keep the two dailies offset so they never contend."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -50,7 +51,7 @@ struct ScheduleSettingsView: View {
                         Stepper("every \(deepDays) day\(deepDays == 1 ? "" : "s")",
                                 value: $deepDays, in: 1...14)
                     }
-                    Text((facts?.jobCaption(Self.deepLabel) ?? Names.Setup.jobWhy(Self.deepLabel)) + " Measured from load or the last run.")
+                    Text(caption(Self.deepLabel, then: "Measured from load or the last run."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -84,10 +85,27 @@ struct ScheduleSettingsView: View {
             }
         }
         .onAppear(perform: load)
-        .task { await HowItWorksModel.shared.load() }
+        .task { await loadCaptions() }
     }
 
     // MARK: - plumbing
+
+    /// The captions at once from the quick read, then Time Machine's permission once `sudo -n -l` answers.
+    private func loadCaptions() async {
+        let quick = HowItWorksFacts.read()
+        facts = quick
+        guard quick.schedules.contains(where: { $0.installed && $0.thinsSnapshots }) else { return }
+        let allowed = await TimeMachinePermission.isAllowed()
+        facts?.timeMachinePermission = allowed
+    }
+
+    /// A job's caption; the sentence after it only when the job is installed (nothing more to say about one that is not).
+    private func caption(_ label: String, then extra: String? = nil) -> String {
+        guard let facts else { return "" }
+        let text = facts.jobCaption(label)
+        guard let extra, facts.schedule(label)?.installed == true else { return text }
+        return text + " " + extra
+    }
 
     private static func date(hour: Int, minute: Int) -> Date {
         Calendar.current.date(from: DateComponents(hour: hour, minute: minute)) ?? .now
