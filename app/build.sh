@@ -102,14 +102,20 @@ if [[ "$BUILD_AHEAD" =~ ^[0-9]+$ ]]; then
 else
   BUILD_AHEAD=""
 fi
+# A published beta: this commit sits exactly on a vX.Y.Z-beta.N tag. It reads as a beta only with a clean tree
+# (BuildInfo.isBeta); the stamp is the tag either way, so the app can tell "beta with changes" from "no beta".
+BUILD_BETA="$(./release-tag.sh --beta .. 2>/dev/null || true)"
+[[ -n "$BUILD_BETA" ]] && /usr/libexec/PlistBuddy -c "Add :MABuildBetaTag string $BUILD_BETA" "$APP/Contents/Info.plist" 2>/dev/null || true
 cp "$BIN/MacAnalyzersApp" "$APP/Contents/MacOS/MacAnalyzersApp"
 cp "$BIN/NotifierCLI" "$APP/Contents/MacOS/notify"
 cp "$BIN/AgentRunner" "$APP/Contents/MacOS/agent-runner"
 # The version this build IS, asked of BuildInfo (the app builds the same string from the same stamps):
-# the release's number for a build exactly at its tag with a clean tree, else the next patch with
-# -dev.<commits since the tag>+<commit>[.local]. CFBundleShortVersionString stays the plain release.
+# the release's number for a build exactly at its tag with a clean tree, X.Y.Z-beta.N for a clean build at a
+# beta tag, else the next patch with -dev.<commits since the tag>+<commit>[.local]. People read the short
+# name BuildInfo makes of it (2.72.0, 2.72.1 Beta, Dev · 8e2c9b0), never this string.
+# CFBundleShortVersionString stays the plain release.
 BUILD_VERSION="$("$BIN/AgentRunner" --build-version "$(tr -d ' \n' < ../VERSION)" "${BUILD_AHEAD:--}" \
-  "$(case "${BUILD_TREE:-clean}" in clean) echo 0 ;; unknown) echo '?' ;; *) echo 1 ;; esac)" "${BUILD_COMMIT:--}" "${BUILD_TAG:--}" 2>/dev/null || true)"
+  "$(case "${BUILD_TREE:-clean}" in clean) echo 0 ;; unknown) echo '?' ;; *) echo 1 ;; esac)" "${BUILD_COMMIT:--}" "${BUILD_TAG:--}" "${BUILD_BETA:--}" 2>/dev/null || true)"
 [[ -n "$BUILD_VERSION" ]] && /usr/libexec/PlistBuddy -c "Add :MABuildVersion string $BUILD_VERSION" "$APP/Contents/Info.plist" 2>/dev/null || true
 
 [[ -f AppIcon.icns ]] || ./make-icon.sh
@@ -122,6 +128,8 @@ cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # in this build and not yet released. A release build starts at the first "## v".
 WANT_NEXT=0
 if [[ "$BUILD_AHEAD" =~ ^[0-9]+$ ]] && { [[ "$BUILD_AHEAD" -gt 0 ]] || [[ "${BUILD_DIRTY:-0}" == 1 ]]; }; then WANT_NEXT=1; fi
+# a beta carries the notes of what it adds, which are still under "## Next" at its tag
+[[ -n "${BUILD_BETA:-}" ]] && WANT_NEXT=1
 awk -v next_wanted="$WANT_NEXT" '
   /^## Next/ { in_next = 1 }
   /^## v[0-9]/ { in_next = 0; count++ }

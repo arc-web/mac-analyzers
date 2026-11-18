@@ -7,11 +7,49 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # --no-pull: rebuild from this clone as it is (rebuild.command), for work that is not committed yet
+# --beta: move this clone (on development) to the newest beta's tag instead of pulling (beta.command); when a
+#         release newer than that beta is out, it is the release that is pulled
 pull=1
+beta=0
 [[ "${1:-}" == "--no-pull" ]] && pull=0
+[[ "${1:-}" == "--beta" ]] && beta=1
 
 echo "── Mac Analyzers upgrade ──────────────────────────"
-if [[ "$pull" -eq 1 ]]; then
+if [[ "$beta" -eq 1 ]]; then
+  if [[ "$(git rev-parse --abbrev-ref HEAD)" != "development" ]]; then
+    echo "✗ Beta follows the development branch, and this clone is on another branch. Nothing was changed."
+    exit 1
+  fi
+  echo "→ looking for the newest beta…"
+  if ! git fetch --quiet --tags origin; then
+    echo "✗ Could not reach GitHub, so nothing was changed."
+    exit 1
+  fi
+  # The newest published version: a beta sorts below the release it leads to (versionsort.suffix), so a
+  # release that has caught up with its beta is what is installed.
+  newest="$(git -c versionsort.suffix=-beta tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$' | head -n 1 || true)"
+  if [[ -z "$newest" ]]; then
+    echo "✗ No beta or release is tagged on GitHub yet. Nothing was changed."
+    exit 1
+  fi
+  if [[ "$newest" == *-beta.* ]]; then
+    target="$(git rev-list -n 1 "$newest")"
+    here="$(git rev-parse HEAD)"
+    if [[ "$here" == "$target" ]]; then
+      echo "→ this clone is already at $newest"
+    elif git merge-base --is-ancestor "$target" HEAD; then
+      echo "✗ This clone is already past $newest (it has commits that come after it), so it cannot be moved back to it."
+      echo "  Nothing was changed. Use This Copy to rebuild the clone as it is."
+      exit 1
+    else
+      echo "→ moving this clone to $newest…"
+      git merge --ff-only "$target"
+    fi
+  else
+    echo "→ $newest is out: pulling it…"
+    git pull --ff-only
+  fi
+elif [[ "$pull" -eq 1 ]]; then
   echo "→ pulling the latest version…"
   git pull --ff-only
 else

@@ -212,15 +212,20 @@ final class Snapshot: NSObject, NSApplicationDelegate {
             case "available": (0, "999.0.0")
             default: (0, version)
             }
-            let forced = UpdateState(build: BuildInfo(release: version, commitsAfter: preset.commits, localChanges: false))
+            // `beta-copy`: a copy built at a beta tag, on the Releases channel
+            let betaCopy = state == "beta-copy"
+            let forced = UpdateState(build: betaCopy
+                ? BuildInfo(release: version, commitsAfter: 6, commit: String(repeating: "a", count: 40), treeHash: "clean", releaseTag: "v\(version)", betaTag: "v\(BuildInfo.nextPatch(after: version))-beta.2")
+                : BuildInfo(release: version, commitsAfter: preset.commits, localChanges: false))
             forced.preset(latest: preset.latest)
-            // the development channels: `beta-behind|beta-current|beta-ahead|beta-offline|copy-behind|copy-dirty|copy-current|copy-differs`
+            // the development channels: `beta-behind|beta-current|beta-none|beta-release|beta-ahead|beta-offline|copy-behind|copy-dirty|copy-current|copy-differs`
             let commit = String(repeating: "a", count: 40)
             let fixtures: [String: (UpdateChannel, ChannelState, String?, CloneFacts)] = [
-                "beta-behind": (.beta, .behind(changes: 5, uncommitted: false), "9f3c2e1 · Show what each cleanup moved to the Trash",
-                                CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
-                "beta-current": (.beta, .upToDate, nil, CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
-                "beta-ahead": (.beta, .ahead(Names.ChannelText.notOnGitHub), nil, CloneFacts(branch: "development", isDirty: true, fingerprint: "x", relation: .same)),
+                "beta-behind": (.beta, .offered("2.72.1 Beta 2"), "2.72.1 Beta 2", CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
+                "beta-current": (.beta, .upToDate, "2.72.1 Beta 2", CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
+                "beta-none": (.beta, .unavailable(Names.ChannelText.noBetaYet), nil, CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
+                "beta-release": (.beta, .offered("2.72.1"), "2.72.1 Beta 2", CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
+                "beta-ahead": (.beta, .ahead(Names.ChannelText.aheadOfBeta), "2.72.1 Beta 2", CloneFacts(branch: "development", isDirty: true, fingerprint: "x", relation: .same)),
                 "beta-offline": (.beta, .unknown(Names.ChannelText.offline), nil, CloneFacts(branch: "development", isDirty: false, fingerprint: "clean", relation: .same)),
                 "copy-behind": (.thisCopy, .behind(changes: 3, uncommitted: true), nil, CloneFacts(branch: "feature/update-channels", isDirty: true, fingerprint: "x", relation: .cloneAhead(3))),
                 "copy-dirty": (.thisCopy, .behind(changes: 0, uncommitted: true), nil, CloneFacts(branch: "development", isDirty: true, fingerprint: "x", relation: .same)),
@@ -230,7 +235,16 @@ final class Snapshot: NSObject, NSApplicationDelegate {
             if let fixture = fixtures[state] {
                 // a "current" state is one a clean build can be in; the others come from a build with changes
                 let isCurrent = state == "beta-current" || state == "copy-current"
-                let channelBuild = BuildInfo(release: version, commitsAfter: 3, localChanges: !isCurrent, commit: commit, branch: "development", treeHash: isCurrent ? "clean" : "x")
+                let nextVersion = BuildInfo.nextPatch(after: version)
+                let channelBuild: BuildInfo = switch state {
+                // Beta fixtures are the copies a person on Beta really has: a release copy, a beta copy, a Dev copy
+                case "beta-behind", "beta-none", "beta-release", "beta-offline":
+                    BuildInfo(release: version, commitsAfter: 0, commit: commit, branch: "development", treeHash: "clean", releaseTag: "v\(version)")
+                case "beta-current":
+                    BuildInfo(release: version, commitsAfter: 6, commit: commit, branch: "development", treeHash: "clean", releaseTag: "v\(version)", betaTag: "v\(nextVersion)-beta.2")
+                default:
+                    BuildInfo(release: version, commitsAfter: 3, localChanges: !isCurrent, commit: commit, branch: "development", treeHash: isCurrent ? "clean" : "x")
+                }
                 let channelState = UpdateState(build: channelBuild)
                 channelState.preset(latest: version)
                 channelState.preset(channel: fixture.0, state: fixture.1, newest: fixture.2, cloneBranch: fixture.3.branch, facts: fixture.3)

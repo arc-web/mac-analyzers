@@ -85,64 +85,77 @@ public enum UpdateChecker {
         return (core, pre)
     }
 
-    // MARK: - Beta: the newest commit on `development`
+    // MARK: - Beta: the newest GitHub pre-release
 
     private static let repository = "hrconsultnj/mac-analyzers"
 
-    /// Where GitHub's `development` stands against the commit this copy was built from: one public GET of
-    /// the compare endpoint, cached for 6 hours per installed commit unless forced. Falls back to the last
-    /// answer for that commit when it cannot be read; nil when there is none (offline).
-    public static func betaCompare(installedCommit: String, force: Bool = false) async -> BetaCompare? {
+    /// What GitHub's releases list says Beta can offer: one public GET, cached for 6 hours unless forced; the
+    /// last answer when it cannot be read, nil when there is none (offline). `latestVersion` reads
+    /// `/releases/latest`, which GitHub never fills with a pre-release, so a beta is never mistaken for a release.
+    public static func betaFeed(force: Bool = false) async -> BetaFeed? {
         let defaults = UserDefaults.standard
-        let cached = defaults.data(forKey: "updateBetaCompare")
-            .flatMap { try? JSONDecoder().decode(CachedCompare.self, from: $0) }
-            .flatMap { $0.commit == installedCommit ? $0 : nil }
-        if !force, let cached, Date().timeIntervalSince1970 - cached.at < 6 * 3600 { return cached.compare }
-        guard let url = URL(string: "https://api.github.com/repos/\(repository)/compare/\(installedCommit)...development"),
+        let cached = defaults.data(forKey: "updateBetaFeed").flatMap { try? JSONDecoder().decode(CachedFeed.self, from: $0) }
+        if !force, let cached, Date().timeIntervalSince1970 - cached.at < 6 * 3600 { return cached.feed }
+        guard let url = URL(string: "https://api.github.com/repos/\(repository)/releases?per_page=100"),
               let (data, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse
-        else { return cached?.compare }
-        var result: BetaCompare?
+        else { return cached?.feed }
         if http.statusCode == 403 || http.statusCode == 429 {
             // GitHub is limiting this network: not "offline", and not worth caching
-            return cached?.compare ?? BetaCompare(status: "rateLimited", aheadBy: 0)
+            return cached?.feed ?? BetaFeed(status: "rateLimited")
         }
-        if http.statusCode == 404 || http.statusCode == 422 {
-            result = BetaCompare(status: "missing", aheadBy: 0)        // GitHub does not know this commit
-        } else if http.statusCode == 200, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let status = json["status"] as? String {
-            var newest: String?
-            if let last = (json["commits"] as? [[String: Any]])?.last,
-               let sha = last["sha"] as? String, let commit = last["commit"] as? [String: Any] {
-                let line = (commit["message"] as? String)?.split(separator: "\n").first.map(String.init) ?? ""
-                newest = "\(sha.prefix(7)) · \(line)"
-            }
-            result = BetaCompare(status: status, aheadBy: json["ahead_by"] as? Int ?? 0, newest: newest)
+        guard http.statusCode == 200, let feed = BetaFeed.parse(releases: data) else { return cached?.feed }
+        if let encoded = try? JSONEncoder().encode(CachedFeed(at: Date().timeIntervalSince1970, feed: feed)) {
+            defaults.set(encoded, forKey: "updateBetaFeed")
         }
-        guard let result else { return cached?.compare }
-        if let encoded = try? JSONEncoder().encode(CachedCompare(commit: installedCommit, at: Date().timeIntervalSince1970, compare: result)) {
-            defaults.set(encoded, forKey: "updateBetaCompare")
-        }
-        return result
+        return feed
     }
 
-    private struct CachedCompare: Codable { var commit: String; var at: Double; var compare: BetaCompare }
+    private struct CachedFeed: Codable { var at: Double; var feed: BetaFeed }
 
-    /// The changelog on the `development` branch: where the Beta channel's release notes come from (its
-    /// "## Next" section). Cached for the same 6 hours; the last copy when it cannot be read.
-    public static func betaChangelog(force: Bool = false) async -> String? {
+    /// The changelog at a ref of the repository: where the Beta channel's release notes come from (its "## Next"
+    /// section) — the newest beta's tag, or `development` when no beta is out. Cached for the same 6 hours per
+    /// ref; the last copy when it cannot be read.
+    public static func betaChangelog(ref: String, force: Bool = false) async -> String? {
         let defaults = UserDefaults.standard
+        let refKey = defaults.string(forKey: "updateBetaChangelogRef")
         let at = defaults.double(forKey: "updateBetaChangelogAt")
-        if !force, Date().timeIntervalSince1970 - at < 6 * 3600, let cached = defaults.string(forKey: "updateBetaChangelog") {
+        if !force, refKey == ref, Date().timeIntervalSince1970 - at < 6 * 3600, let cached = defaults.string(forKey: "updateBetaChangelog") {
             return cached
         }
-        guard let url = URL(string: "https://raw.githubusercontent.com/\(repository)/development/CHANGELOG.md"),
+        guard let url = URL(string: "https://raw.githubusercontent.com/\(repository)/\(ref)/CHANGELOG.md"),
               let (data, response) = try? await URLSession.shared.data(from: url),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let text = String(data: data, encoding: .utf8)
-        else { return defaults.string(forKey: "updateBetaChangelog") }
+        else { return refKey == ref ? defaults.string(forKey: "updateBetaChangelog") : nil }
         defaults.set(text, forKey: "updateBetaChangelog")
+        defaults.set(ref, forKey: "updateBetaChangelogRef")
         defaults.set(Date().timeIntervalSince1970, forKey: "updateBetaChangelogAt")
         return text
     }
+}
+
+extension BetaFeed {
+    /// Reads GitHub's releases list (an array of objects with `tag_name`, `prerelease`, `draft`). A beta is a
+    /// pre-release tagged exactly `vX.Y.Z-beta.N`; a release is a published non-pre-release tagged exactly
+    /// `vX.Y.Z`. Anything else (drafts, other tags) is ignored. nil when the data is not a list.
+    public static func parse(releases data: Data) -> BetaFeed? {
+        guard let list = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else { return nil }
+        var beta: String?, release: String?
+        for item in list {
+            guard let tag = item["tag_name"] as? String, item["draft"] as? Bool != true else { continue }
+            let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+            let isPre = item["prerelease"] as? Bool ?? false
+            if isPre {
+                guard BuildInfo.betaNumber(inTag: tag) != nil else { continue }
+                if beta.map({ isNewerVersion(version, than: $0) }) ?? true { beta = version }
+            } else {
+                guard version.split(separator: ".").count == 3, version.split(separator: ".").allSatisfy({ Int($0) != nil }) else { continue }
+                if release.map({ isNewerVersion(version, than: $0) }) ?? true { release = version }
+            }
+        }
+        return BetaFeed(newestBeta: beta, newestRelease: release)
+    }
+
+    private static func isNewerVersion(_ a: String, than b: String) -> Bool { UpdateChecker.isNewer(a, than: b) }
 }

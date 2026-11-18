@@ -35,9 +35,9 @@ struct UpdateSettingsView: View {
     private var installExplanation: String {
         switch updates.channel {
         case .releases:
-            "Install opens Terminal and runs upgrade.command: pulls the latest version, rebuilds the app, refreshes the background agents, and relaunches. Your settings and protected lists are never touched."
+            "Install opens Terminal and runs upgrade.command on your clone: it pulls the newest release, rebuilds the app, refreshes the background agents, and relaunches. Your settings and protected lists are never touched."
         case .beta:
-            "Updating opens Terminal and runs upgrade.command on your clone: pulls the newest commit on the development branch, rebuilds the app, refreshes the background agents, and relaunches. It never happens by itself. Your settings and protected lists are never touched."
+            "Updating opens Terminal and runs beta.command on your clone: it moves your clone to the newest beta (or to the newer release, once one is out), rebuilds the app, refreshes the background agents, and relaunches. It never happens by itself. Your settings and protected lists are never touched."
         case .thisCopy:
             "Rebuilding opens Terminal and runs rebuild.command: builds your clone as it is, uncommitted changes included, refreshes the background agents, and relaunches. Nothing is pulled. Your settings and protected lists are never touched."
         }

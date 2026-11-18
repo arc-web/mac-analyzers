@@ -17,6 +17,7 @@ The screen is a deep-link name such as `monitor`, `trends` or `recordings`
 title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
+- Updates now has a real Beta channel, like a beta you subscribe to in TestFlight. Beta follows the newest pre-release published on GitHub, and offers the release itself once it ships. Versions read short everywhere: a release is `2.72.0`, a beta is `2.72.1 Beta`, and a copy you built yourself is `Dev · 8e2c9b0`. <!-- wn: open=update icon=arrow.triangle.2.circlepath title="Release and Beta Channels" -->
 - The sidebar's icons are in colour again, one colour for each section, in light and dark mode. <!-- wn: open=- icon=sidebar.leading title="Coloured Sidebar Icons" -->
 - Overview and Disk open with a header that says where you are: an icon, the name, one line about it, and Overview lists the screens it summarizes so each is one click away. <!-- wn: open=overview icon=gauge.with.dots.needle.33percent title="Headers on Overview and Disk" -->
 - Settings › Storage is grouped by what each setting controls: build caches, tool caches, code projects, git worktrees, apps and recordings, Downloads and backups. Every setting has a short explanation under it. Nothing about what the cleans do has changed. <!-- wn: open=storage icon=internaldrive.fill title="Storage Settings, Reorganized" -->
