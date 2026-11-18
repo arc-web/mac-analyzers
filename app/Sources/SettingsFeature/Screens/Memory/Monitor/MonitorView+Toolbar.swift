@@ -31,6 +31,7 @@ struct MonitorToolbar: ToolbarContent {
             .labelStyle(.titleAndIcon)
             .help("Choose what to measure: memory, energy or disk activity")
         }
+        .toolbarRank(.secondary)
         ToolbarItem(placement: .primaryAction) {
             if let selected, let verb = selected.stopVerb {
                 Button { begin(selected.stop) } label: {
@@ -39,6 +40,7 @@ struct MonitorToolbar: ToolbarContent {
                 .help("\(verb) \(selected.name)")
             }
         }
+        .toolbarRank(.primary)
         ToolbarItem(placement: .secondaryAction) {
             Menu {
                 Button(Names.Monitor.refreshNow, systemImage: "arrow.clockwise", action: refreshNow)
@@ -55,11 +57,16 @@ struct MonitorToolbar: ToolbarContent {
             .labelStyle(.titleAndIcon)
             .help("Refresh now, or choose how often")
         }
+        .toolbarRank(.secondary)
         ToolbarItem(placement: .primaryAction) {
-            Button { inspectorShown.toggle() } label: {
+            // the system's own trailing sidebar toggle: the icon alone (its title is the tooltip and the overflow menu's
+            // text), so it never takes the width that pushed it over the search field
+            Toggle(isOn: $inspectorShown) {
                 Label(Names.Monitor.inspector, systemImage: "sidebar.trailing")
             }
+            .labelStyle(.iconOnly)
             .help("Show or hide the details panel")
         }
+        .toolbarRank(.primary)
     }
 }

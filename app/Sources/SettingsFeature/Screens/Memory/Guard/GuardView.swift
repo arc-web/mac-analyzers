@@ -59,7 +59,8 @@ struct GuardView: View {
                         GuardRuleInspector(model: model, selected: model.selection.first.flatMap { GuardCategoryTab.row(id: $0, model) })
                             .inspectorColumnWidth(min: 240, ideal: 300, max: 420)
                     }
-                    .toolbar { ToolbarItem { Toggle(isOn: $inspectorShown) { Label(Names.Monitor.inspector, systemImage: "sidebar.trailing") } } }
+                    .toolbar { ToolbarItem { Toggle(isOn: $inspectorShown) { Label(Names.Monitor.inspector, systemImage: "sidebar.trailing") }
+                        .labelStyle(.iconOnly).help("Show or hide the details panel") }.toolbarRank(.primary) }
             case .history:
                 bar(GuardHistoryView())
             }

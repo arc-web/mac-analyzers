@@ -46,7 +46,9 @@ public enum RestoreBlock {
     /// and nothing else on the line. A line that merely CONTAINS those words (a cleaner's `input:` line can
     /// carry any text) is not one, so no run is ever taken for a restore because of what it says.
     public static func isRestore(header: String) -> Bool {
-        header.wholeMatch(of: /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \| restore from Undo \| APPLY/) != nil
+        // the plain-text test first: this runs on every line of a whole log, and the pattern match is the slow part
+        guard header.contains("restore from Undo") else { return false }
+        return header.wholeMatch(of: /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \| restore from Undo \| APPLY/) != nil
     }
 
     static let pairingTag = "[RESTORED]"
