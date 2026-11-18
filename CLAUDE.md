@@ -403,7 +403,7 @@ through `config.local.sh` (never hardcoded).
   the titles do not all fit, tabs give them up one at a time and none is
   ever hidden; a zero count is not drawn. Never measure widths by hand or
   swap in a menu. A screen's toolbar is for its actions, each with icon
-  and title (only search, and the inspector toggle — the system's `sidebar.trailing` toggle, titled in its tooltip and the overflow menu, as in Apple's own apps — may be an icon).
+  and title (only search may be an icon). The details panel's toggle is Details with `info.circle`, never `sidebar.trailing`: a second sidebar symbol next to the window's own sidebar button reads as two sidebar buttons.
 - **One table for rows that open: `OutlineTable`** (2026-11-11, after
   measuring every SwiftUI hierarchical control — `Table` with
   `DisclosureTableRow`, `Table(children:)`, `List` with `OutlineGroup`,

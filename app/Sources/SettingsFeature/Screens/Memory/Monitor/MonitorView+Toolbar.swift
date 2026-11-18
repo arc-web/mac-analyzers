@@ -59,12 +59,12 @@ struct MonitorToolbar: ToolbarContent {
         }
         .toolbarRank(.secondary)
         ToolbarItem(placement: .primaryAction) {
-            // the system's own trailing sidebar toggle: the icon alone (its title is the tooltip and the overflow menu's
-            // text), so it never takes the width that pushed it over the search field
+            // "Details" with its own symbol, so it never reads as a second sidebar button; the toolbar ranks keep it
+            // clear of the search field in a narrow window
             Toggle(isOn: $inspectorShown) {
-                Label(Names.Monitor.inspector, systemImage: "sidebar.trailing")
+                Label(Names.Monitor.inspector, systemImage: "info.circle")
             }
-            .labelStyle(.iconOnly)
+            .labelStyle(.titleAndIcon)
             .help("Show or hide the details panel")
         }
         .toolbarRank(.primary)
