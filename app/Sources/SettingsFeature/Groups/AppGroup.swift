@@ -24,13 +24,6 @@ final class UpdateBadge {
     var updateAvailable: Bool { state?.isAvailable ?? false }
 }
 
-/// A link that asks the Updates screen to scroll to its What's New list: set by the link, taken by the screen.
-@MainActor @Observable
-final class UpdatesListLink {
-    static let shared = UpdatesListLink()
-    var scrollToList = false
-}
-
 /// The Mac Analyzers screen and what it opens: Updates (with What's New under it), How It Works and Support.
 /// None of them has a sidebar row: the item at the foot of the sidebar opens the app screen, which leads to the rest.
 ///
@@ -78,8 +71,8 @@ enum AppGroup {
     /// feature of that release over the release.
     private static func whatsNewLink(_ target: String) -> Resolution? {
         if target == "updates:whatsNew" {
-            UpdatesListLink.shared.scrollToList = true
-            return .main(Location(updates))
+            // a one-shot request the Updates screen takes when it shows (never a flag a resolve could leave behind)
+            return .mainWithIntent(Location(updates), SectionIntent(section: updates, payload: "whatsNew"))
         }
         let prefix = "updates:whatsNew:"
         guard target.hasPrefix(prefix) else { return nil }

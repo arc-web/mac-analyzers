@@ -113,6 +113,14 @@ public struct BetaFeed: Equatable, Sendable, Codable {
     }
 }
 
+/// Whether a copy's commit already holds a published beta's commit (GitHub's compare of the beta's tag with the commit).
+public enum BetaContainment: Equatable, Sendable, Codable {
+    /// The copy's commit is the beta's or comes after it: it has everything the beta has.
+    case contains
+    /// The copy's commit is behind the beta or has gone another way: it lacks something the beta has.
+    case lacks
+}
+
 /// The words-free rules of the two development channels: facts in, one state out, so a probe can run every case.
 public enum ChannelLogic {
 
@@ -120,7 +128,13 @@ public enum ChannelLogic {
     /// precedence: 2.72.0 < 2.72.1-beta.1 < 2.72.1-beta.2 < 2.72.1-dev.N < 2.72.1. A development copy is therefore
     /// never offered a beta it is past, and every copy is offered the release once it is published. Only a clone on
     /// `development` can follow it, because installing is a fast-forward of that branch to the tag.
-    public static func beta(build: BuildInfo, cloneBranch: String?, isClone: Bool, feed: BetaFeed?) -> ChannelState {
+    ///
+    /// A development copy of the same version is above every beta of it by precedence alone, so for it the version cannot
+    /// say whether it has the newest beta: `containment` does (the copy's commit against the beta's). A Dev copy that lacks
+    /// the beta is offered it; one that holds it is ahead; when that could not be read (a commit GitHub does not know, or
+    /// offline) it is ahead, never offered something it may already hold.
+    public static func beta(build: BuildInfo, cloneBranch: String?, isClone: Bool, feed: BetaFeed?,
+                            containment: BetaContainment? = nil) -> ChannelState {
         guard isClone else { return .unavailable(Names.ChannelText.notAClone) }
         guard cloneBranch == "development" else {
             return .unavailable(Names.ChannelText.notOnDevelopment(cloneBranch))
@@ -136,6 +150,9 @@ public enum ChannelLogic {
             // the newest thing published is this copy: a beta is "the newest beta"; a release means no beta is out
             return feed.newestBeta == target ? .upToDate : .unavailable(Names.ChannelText.noBetaYet)
         case .orderedAscending:
+            if build.isDevelopment, let beta = feed.newestBeta, beta == target, containment == .lacks {
+                return .offered(BuildInfo.label(forVersion: target))
+            }
             return .ahead(feed.newestBeta == nil ? Names.ChannelText.aheadOfRelease : Names.ChannelText.aheadOfBeta)
         }
     }

@@ -498,7 +498,7 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   own), and it follows the channel: `WhatsNewSource` / `ReleaseNote.channelNotes` give Releases the
   published releases, Beta those plus the newest published beta past the newest release (a card named by
   `BuildInfo.label`, its notes the `## Next` at that beta's tag), and This Copy those plus a "Not Released
-  Yet" card from the clone's own `## Next`; a card pushes its release (`WhatsNewReleaseScreen`), a feature
+  Yet" card from the clone's own `## Next` (a Dev or beta build also keeps the notes it holds; on This Copy the beta's card is read only when the clone is on `development`); a card pushes its release (`WhatsNewReleaseScreen`), a feature
   its detail. The links are `updates:whatsNew` (Updates, scrolled to the list), `updates:whatsNew:latest`
   and `updates:whatsNew:<version>`; render them with
   `snapshot-runner update out.png --update-state <uptodate|beta-behind|beta-none|copy-behind|…>` and
@@ -512,7 +512,7 @@ Both are protected (code-owner review required for PRs; owner pushes directly).
   installed vs latest and run `upgrade.command` on Install.
   A copy built from a git clone can also follow an update channel, picked on
   the Updates screen (`UpdateChannel`, saved in defaults): **Releases** (the
-  default, as above), **Beta** (the newest GitHub pre-release, tag `vX.Y.Z-beta.N`, or a newer release; one public request for the releases list and the changelog at that tag; Install is `beta.command`, which fast-forwards a clone on `development` to that tag and rebuilds; cut with `scripts/cut-beta.sh`) and **This Copy** (the clone itself, uncommitted changes
+  default, as above), **Beta** (the newest GitHub pre-release, tag `vX.Y.Z-beta.N`, or a newer release; one public request for the releases list and the changelog at that tag; Install is `beta.command`, which moves a clone on `development` forward to the newest PUBLISHED version's tag (a tag counts only when GitHub has a release for it; a release newer than the beta wins; never the development tip; a clone already past it is refused) and rebuilds; cut with `scripts/cut-beta.sh`, which makes the tag and the pre-release in one step so one never exists without the other; a Dev copy is offered the newest beta when its commit does not hold that beta's, asked of GitHub's compare) and **This Copy** (the clone itself, uncommitted changes
   included, read with local `git`; "Rebuild from This Copy" runs
   `rebuild.command`, the same build without the pull). The build stamps
   `MABuildCommit`, `MABuildBranch`, `MABuildTreeHash` (`scripts/tree-hash.sh`:

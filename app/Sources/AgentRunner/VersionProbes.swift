@@ -157,6 +157,11 @@ func probeVersions() async -> Never {
     state("   including to a release copy", beta(release, shipped), .offered("2.72.1"))
     state("no beta out and this copy is the newest release: say so plainly", beta(release, none), .unavailable(Names.ChannelText.noBetaYet))
     state("a Dev copy of 2.72.1 is past the betas", beta(dev, secondBeta), .ahead(Names.ChannelText.aheadOfBeta))
+    // by version a Dev copy of 2.72.1 is above every beta of it: whether it HOLDS the newest one is asked by commit
+    state("a Dev copy that lacks the newest beta is offered it (the version cannot say)", ChannelLogic.beta(build: dev, cloneBranch: "development", isClone: true, feed: secondBeta, containment: .lacks), .offered("2.72.1 Beta 2"))
+    state("a Dev copy that holds the newest beta is ahead of it", ChannelLogic.beta(build: dev, cloneBranch: "development", isClone: true, feed: secondBeta, containment: .contains), .ahead(Names.ChannelText.aheadOfBeta))
+    state("a Dev copy whose commit could not be compared is never offered what it may hold", ChannelLogic.beta(build: dev, cloneBranch: "development", isClone: true, feed: secondBeta, containment: nil), .ahead(Names.ChannelText.aheadOfBeta))
+    state("containment is not asked of a release copy: the version decides", ChannelLogic.beta(build: release, cloneBranch: "development", isClone: true, feed: secondBeta, containment: .contains), .offered("2.72.1 Beta 2"))
     state("a Dev copy with no beta out is past the release", beta(dev, none), .ahead(Names.ChannelText.aheadOfRelease))
     state("a Dev copy is still offered a release newer than itself", beta(dev, BetaFeed(newestBeta: "2.72.1-beta.2", newestRelease: "2.72.1")), .offered("2.72.1"))
     state("offline: nothing answered", beta(release, nil), .unknown(Names.ChannelText.offline))
@@ -214,12 +219,12 @@ func probeVersions() async -> Never {
     _ = tagGit(["add", "-A"]); _ = tagGit(["commit", "-q", "-m", "four"])
     expect("a commit after the beta is not the beta", tagScript(["--beta", tagRoot.path]), "")
 
-    let upgradeText = (try? String(contentsOf: repoRoot.appending(path: "upgrade.command"), encoding: .utf8)) ?? ""
-    let betaCommand = (try? String(contentsOf: repoRoot.appending(path: "beta.command"), encoding: .utf8)) ?? ""
-    flag("beta.command exists, is executable and runs upgrade.command --beta",
-         FileManager.default.isExecutableFile(atPath: repoRoot.appending(path: "beta.command").path) && betaCommand.contains("exec ./upgrade.command --beta"), true)
-    flag("upgrade.command --beta moves the clone to the tag with a fast-forward only",
-         upgradeText.contains("--beta") && upgradeText.contains("git merge --ff-only \"$target\""), true)
+    print("\n— the install scripts, run for real on a scratch clone —")
+    UpgradeScriptProbe.run(repoRoot: repoRoot) { label, ok, detail in
+        if !ok { failed += 1 }
+        print("\(ok ? "PASS" : "FAIL") \(label)\(ok || detail.isEmpty ? "" : "   (\(detail))")")
+    }
+    flag("beta.command exists and is executable", FileManager.default.isExecutableFile(atPath: repoRoot.appending(path: "beta.command").path), true)
 
     print("\n— the owner's flow: This Copy, Check Now, Rebuild —")
     let root = ProbeScratch.folder("ma-probe-versions")

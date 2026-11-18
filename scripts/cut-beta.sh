@@ -15,8 +15,11 @@
 # It stops at the first thing that is not right, before anything has been changed:
 #   1. you are on `development` with nothing uncommitted, and every repository check passes (scripts/check.sh)
 #   2. the version is newer than the latest release, and this commit is not already a beta
-#   3. "## Next" has notes fit to show people (a beta with nothing to say is not published)
-#   4. then: push development, tag the commit, publish the pre-release with those notes
+#   3. "## Next" has notes fit to show people: the same release-notes rules cut-release applies
+#      (scripts/changelog-check.sh), and at least one note
+#   4. then: push development and create the pre-release, which makes the tag on GitHub in the same step, so a tag
+#      never exists without its pre-release; the tag is then fetched here. If creating it fails, nothing was tagged
+#      anywhere and running this again finishes the job.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -96,8 +99,9 @@ number=$(( ${last:-0} + 1 ))
 tag="v$version-beta.$number"
 if (( number > 1 )); then name="$version Beta $number"; else name="$version Beta"; fi
 
-# this commit must be new: a beta tag already on it means there is nothing to publish
-existing="$(git tag --points-at HEAD --list 'v*-beta.*' | head -n 1 || true)"
+# this commit must be new: a beta tag already on it (here, or on GitHub) means there is nothing to publish
+head_commit="$(git rev-parse HEAD)"
+existing="$({ git tag --points-at HEAD --list 'v*-beta.*'; git ls-remote --tags origin 'refs/tags/v*-beta.*' 2>/dev/null | awk -v head="$head_commit" '$1 == head { sub(".*refs/tags/", "", $2); print $2 }'; } | head -n 1 || true)"
 if [[ -n "$existing" ]]; then
   echo "cut-beta: this commit is already published as $existing — commit something new first." >&2
   exit 1
@@ -121,6 +125,26 @@ if ! grep -qE '^[[:space:]]*[-*][[:space:]]' "$notes"; then
   echo "cut-beta: '## Next' in CHANGELOG.md has no notes yet — a beta needs something to say. Nothing was changed." >&2
   exit 1
 fi
+# the same prose rules a release's notes pass (no code names, no source files, full sentences, tags present):
+# the notes are judged as a release entry of this version, on a copy, before anything is changed
+gate="$(mktemp)"
+{
+  printf '# What'"'"'s New\n\n## v%s — Beta of the next release\n\n' "$version"
+  awk '
+    /^## Next/ { inside = 1; next }
+    inside && /^## v[0-9]/ { exit }
+    inside && /^[[:space:]]*[-*][[:space:]]/ { started = 1 }
+    inside && started { print }
+  ' CHANGELOG.md
+} > "$gate"
+gate_out="$(MA_CHANGELOG="$gate" scripts/changelog-check.sh "$version" 2>&1)" || {
+  rm -f "$gate"
+  echo "$gate_out" >&2
+  echo "cut-beta: stopped — the '## Next' notes do not pass the release-notes rules a release must pass. Fix CHANGELOG.md and run this again. Nothing was changed." >&2
+  exit 1
+}
+rm -f "$gate"
+
 echo
 echo "──────── What the pre-release will say ────────"
 echo "Mac Analyzers $name"
@@ -143,20 +167,24 @@ fi
 # ── 4. publish ─────────────────────────────────────────────────────────────
 say "pushing development"
 run git push origin development
-say "tagging $tag"
-run git tag "$tag" HEAD
-run git push origin "refs/tags/$tag"
-say "creating the GitHub pre-release"
-run gh release create "$tag" --prerelease --latest=false --verify-tag \
-  --title "Mac Analyzers $name" --notes-file "$notes"
-
+# Creating the release with --target makes the tag on GitHub at this commit in the same step, so there is never a tag
+# without its pre-release. If it fails nothing was tagged and a rerun starts clean.
+say "creating the GitHub pre-release (and its tag $tag)"
 if (( dry_run )); then
+  echo "  [dry-run] gh release create $tag --prerelease --latest=false --target $head_commit --title Mac Analyzers $name --notes-file <notes>"
+  echo "  [dry-run] git fetch --tags origin"
   echo "cut-beta [dry-run]: every check passed; nothing was changed. main and VERSION are never touched."
   exit 0
 fi
+if ! gh release create "$tag" --prerelease --latest=false --target "$head_commit" \
+     --title "Mac Analyzers $name" --notes-file "$notes"; then
+  echo "cut-beta: GitHub did not create the pre-release, so nothing was tagged. Development is already pushed; fix the cause (network, 'gh auth status') and run scripts/cut-beta.sh again." >&2
+  exit 1
+fi
+git fetch --quiet --tags origin || echo "cut-beta: note — the tag $tag is not on this Mac yet. Run: git fetch --tags" >&2
 if [[ "$(gh release view "$tag" --json isPrerelease -q .isPrerelease 2>/dev/null || true)" == "true" ]]; then
   say "published: $(gh release view "$tag" --json url -q .url)"
 else
-  echo "cut-beta: $tag was tagged but its pre-release is not on GitHub yet. Run: gh release create $tag --prerelease --verify-tag --notes-file <notes>" >&2
+  echo "cut-beta: $tag was created but GitHub does not report it as a pre-release. Check: gh release view $tag" >&2
   exit 1
 fi

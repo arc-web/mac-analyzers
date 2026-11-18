@@ -24,22 +24,28 @@ enum WhatsNewSource {
         let cloneText: Int
         let betaText: Int
         let betaLabel: String?
+        let isDevelopment: Bool
+        let runningBeta: String?
         let stamp: Date?
     }
     private static var cache: [Key: [ReleaseNote]] = [:]
 
-    /// The list of the channel in use: Releases the published releases, Beta those and the newest published beta, This
-    /// Copy those and the clone's own "Not Released Yet" (`ReleaseNote.channelNotes`). Kept per channel, so switching
+    /// The list of the channel in use (`ReleaseNote.channelNotes`): Releases the published releases, Beta those and the
+    /// newest published beta, This Copy those and the clone's own "Not Released Yet"; a Dev or beta build also keeps the
+    /// notes it holds. Kept per channel, so switching
     /// the tab shows the list at once.
     static func notes(updates: UpdateState) async -> [ReleaseNote] {
         let channel = updates.channel
         let clone = updates.channelChangelog
         let beta = updates.betaNotes
+        let isDevelopment = updates.build.isDevelopment
+        let runningBeta = updates.build.isBeta ? updates.build.label : nil
         let key = Key(channel: channel, cloneText: clone.hashValue, betaText: beta?.changelog.hashValue ?? 0,
-                      betaLabel: beta?.label, stamp: ReleaseNote.changelogStamp)
+                      betaLabel: beta?.label, isDevelopment: isDevelopment, runningBeta: runningBeta, stamp: ReleaseNote.changelogStamp)
         if let hit = cache[key] { return hit }
         let parsed = await Task.detached(priority: .userInitiated) {
-            ReleaseNote.channelNotes(channel: channel, cloneChangelog: clone, betaChangelog: beta?.changelog, betaLabel: beta?.label)
+            ReleaseNote.channelNotes(channel: channel, cloneChangelog: clone, betaChangelog: beta?.changelog, betaLabel: beta?.label,
+                                     isDevelopment: isDevelopment, runningBetaLabel: runningBeta)
         }.value
         cache[key] = parsed
         return parsed

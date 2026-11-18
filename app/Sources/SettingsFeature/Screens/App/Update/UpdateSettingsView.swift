@@ -8,7 +8,7 @@ struct UpdateSettingsView: View {
 
     @Environment(UpdateState.self) private var updates
 
-    private let listLink = UpdatesListLink.shared
+    @Environment(Navigator.self) private var navigator
 
     /// What's New, under the controls: the list follows the channel picked above (`WhatsNewSource`).
     @State private var notes: [ReleaseNote] = []
@@ -35,7 +35,7 @@ struct UpdateSettingsView: View {
     private var installExplanation: String {
         switch updates.channel {
         case .releases:
-            "Install opens Terminal and runs upgrade.command on your clone: it pulls the newest release, rebuilds the app, refreshes the background agents, and relaunches. Your settings and protected lists are never touched."
+            "Install opens Terminal and runs upgrade.command on your clone: it pulls the newest version of the branch your clone is on (on main, the newest release), rebuilds the app, refreshes the background agents, and relaunches. Your settings and protected lists are never touched."
         case .beta:
             "Updating opens Terminal and runs beta.command on your clone: it moves your clone to the newest beta (or to the newer release, once one is out), rebuilds the app, refreshes the background agents, and relaunches. It never happens by itself. Your settings and protected lists are never touched."
         case .thisCopy:
@@ -44,8 +44,8 @@ struct UpdateSettingsView: View {
     }
 
     private func scrollIfAsked(_ proxy: ScrollViewProxy) {
-        guard listLink.scrollToList, loaded else { return }
-        listLink.scrollToList = false
+        guard loaded, navigator.pendingIntent?.section == AppGroup.updates,
+              navigator.takeIntent(for: AppGroup.updates) == "whatsNew" else { return }
         withAnimation { proxy.scrollTo(WhatsNewSections.anchor, anchor: .top) }
     }
 
@@ -116,7 +116,8 @@ struct UpdateSettingsView: View {
         }
         .listStyle(.inset)
         // a link to the list (`updates:whatsNew`) scrolls to it once the screen is showing and the list is loaded
-        .onChange(of: listLink.scrollToList) { scrollIfAsked(proxy) }
+        .onChange(of: navigator.pendingIntent) { scrollIfAsked(proxy) }
+        .onAppear { scrollIfAsked(proxy) }
         .onChange(of: loaded) { scrollIfAsked(proxy) }
         }
         }

@@ -21,33 +21,43 @@ if [[ "$beta" -eq 1 ]]; then
     exit 1
   fi
   echo "→ looking for the newest beta…"
-  if ! git fetch --quiet --tags origin; then
-    echo "✗ Could not reach GitHub, so nothing was changed."
+  if ! fetch_out="$(git fetch --quiet --tags origin 2>&1)"; then
+    echo "✗ Could not fetch from GitHub, so nothing was changed."
+    echo "  git said: ${fetch_out}"
     exit 1
   fi
-  # The newest published version: a beta sorts below the release it leads to (versionsort.suffix), so a
-  # release that has caught up with its beta is what is installed.
-  newest="$(git -c versionsort.suffix=-beta tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$' | head -n 1 || true)"
-  if [[ -z "$newest" ]]; then
-    echo "✗ No beta or release is tagged on GitHub yet. Nothing was changed."
-    exit 1
-  fi
-  if [[ "$newest" == *-beta.* ]]; then
-    target="$(git rev-list -n 1 "$newest")"
-    here="$(git rev-parse HEAD)"
-    if [[ "$here" == "$target" ]]; then
-      echo "→ this clone is already at $newest"
-    elif git merge-base --is-ancestor "$target" HEAD; then
-      echo "✗ This clone is already past $newest (it has commits that come after it), so it cannot be moved back to it."
-      echo "  Nothing was changed. Use This Copy to rebuild the clone as it is."
-      exit 1
-    else
-      echo "→ moving this clone to $newest…"
-      git merge --ff-only "$target"
+  # The newest PUBLISHED version: a beta sorts below the release it leads to (versionsort.suffix), so a release that
+  # has caught up with its beta is what is installed. A tag counts only when GitHub has a release for it: a bare tag
+  # (a beta that was tagged and never published) is skipped.
+  api="${MA_GITHUB_API:-https://api.github.com/repos/hrconsultnj/mac-analyzers}"
+  newest=""
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    if curl -fsS --max-time 20 -o /dev/null "${api}/releases/tags/${candidate}" 2>/dev/null; then
+      newest="$candidate"
+      break
     fi
+  done < <(git -c versionsort.suffix=-beta tag --list 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$' | head -n 8 || true)
+  if [[ -z "$newest" ]]; then
+    echo "✗ No published beta or release was found on GitHub. Nothing was changed."
+    exit 1
+  fi
+  # The clone moves to that tag exactly, never to the development tip, and only forward.
+  target="$(git rev-list -n 1 "$newest")"
+  here="$(git rev-parse HEAD)"
+  if [[ "$here" == "$target" ]]; then
+    echo "→ this clone is already at ${newest}"
+  elif git merge-base --is-ancestor "$target" HEAD; then
+    echo "✗ This clone is already past ${newest} (it has commits that come after it), so it cannot be moved back to it."
+    echo "  Nothing was changed. Use This Copy to rebuild the clone as it is."
+    exit 1
+  elif ! git merge-base --is-ancestor HEAD "$target"; then
+    echo "✗ This clone has commits that ${newest} does not, so it cannot be moved to it without a merge."
+    echo "  Nothing was changed. Use This Copy to rebuild the clone as it is."
+    exit 1
   else
-    echo "→ $newest is out: pulling it…"
-    git pull --ff-only
+    echo "→ moving this clone to ${newest}…"
+    git merge --ff-only "$target"
   fi
 elif [[ "$pull" -eq 1 ]]; then
   echo "→ pulling the latest version…"
@@ -108,9 +118,12 @@ else
   open -g app/MacAnalyzers.app
 fi
 
+# What is running now, by the name the app gives it (2.72.1 Beta, Dev · 8e2c9b0), not VERSION's number
+running="$(/Applications/MacAnalyzers.app/Contents/MacOS/agent-runner --probe-build 2>/dev/null | sed -n 's/^Installed Version: *//p' | head -n 1 || true)"
+[[ -n "$running" ]] || running="v$(cat VERSION)"
 if [[ "$agents_ok" -eq 1 ]]; then
-  echo "✓ Done — Mac Analyzers $(cat VERSION) is running. You can close this window."
+  echo "✓ Done — Mac Analyzers ${running} is running. You can close this window."
 else
-  echo "⚠ Mac Analyzers $(cat VERSION) is running, but a background job could not be started (see above)."
+  echo "⚠ Mac Analyzers ${running} is running, but a background job could not be started (see above)."
   echo "  Run this again in a minute, or open Mac Analyzers → Setup to start it."
 fi

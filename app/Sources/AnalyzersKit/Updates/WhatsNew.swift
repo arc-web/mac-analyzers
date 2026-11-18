@@ -141,26 +141,33 @@ public struct ReleaseNote: Identifiable, Sendable {
     /// The title of the clone's own unreleased section on This Copy.
     public static let notReleasedTitle = "Not Released Yet"
 
-    /// The notes a channel's list shows, newest first. Releases: the published releases (the bundled ones) and
-    /// nothing else. Beta: the newest published beta's card (its `## Next` as it stood at its tag, `betaChangelog`,
-    /// named by `betaLabel`), then the releases. This Copy: those, with a "Not Released Yet" card on top built from
-    /// the clone's own `## Next` (`cloneChangelog`), left out when it says exactly what the beta's card says.
+    /// The notes a channel's list shows, newest first.
+    /// - Releases: the published releases. A development build also keeps its own bundled `## Next` as "In This Build —
+    ///   Not Yet Released", and a beta build its own, named by the beta, so a copy always shows what it holds.
+    /// - Beta: those, and the newest published beta's card (its `## Next` as it stood at its tag, `betaChangelog`, named by
+    ///   `betaLabel`); a beta build that cannot read it (offline) shows the bundled one under its own name.
+    /// - This Copy: those, and a "Not Released Yet" card from the clone's own `## Next` (`cloneChangelog`), which stands in
+    ///   for the build's bundled one.
+    /// A card that says exactly what another card says is left out.
     public static func channelNotes(channel: UpdateChannel, cloneChangelog: String?, betaChangelog: String?,
-                                    betaLabel: String?) -> [ReleaseNote] {
-        let released = bundled(includeNext: false).filter { !$0.isUnreleased }
-        guard channel != .releases else { return released }
+                                    betaLabel: String?, isDevelopment: Bool, runningBetaLabel: String?) -> [ReleaseNote] {
+        let all = bundled(includeNext: isDevelopment || runningBetaLabel != nil)
+        let released = all.filter { !$0.isUnreleased }
+        let bundledNext = all.first { $0.isUnreleased }
         var cards: [ReleaseNote] = []
-        var beta: ReleaseNote?
-        if let betaChangelog, let betaLabel,
+        func add(_ card: ReleaseNote) {
+            if !cards.contains(where: { $0.items.map(\.body) == card.items.map(\.body) }) { cards.append(card) }
+        }
+        let cloneNext = channel == .thisCopy
+            ? cloneChangelog.flatMap { parse($0, includeNext: true).first(where: { $0.isUnreleased }) } : nil
+        if let cloneNext { add(cloneNext.renamed(notReleasedTitle)) }
+        if isDevelopment, cloneNext == nil, let bundledNext { add(bundledNext.renamed(unreleasedTitle)) }
+        if channel != .releases, let betaChangelog, let betaLabel,
            let next = parse(betaChangelog, includeNext: true).first(where: { $0.isUnreleased }) {
-            beta = next.asBeta(betaLabel)
+            add(next.asBeta(betaLabel))
+        } else if let runningBetaLabel, let bundledNext {
+            add(bundledNext.asBeta(runningBetaLabel))
         }
-        if channel == .thisCopy, let cloneChangelog,
-           let next = parse(cloneChangelog, includeNext: true).first(where: { $0.isUnreleased }),
-           next.items.map(\.body) != beta?.items.map(\.body) {
-            cards.append(next.renamed(notReleasedTitle))
-        }
-        if let beta { cards.append(beta) }
         return cards + released
     }
 

@@ -204,7 +204,14 @@ public final class UpdateState {
             guard channel == asked else { return }
             cloneDirty = dirty
             cloneFacts = nil
-            channelState = ChannelLogic.beta(build: build, cloneBranch: basics.branch, isClone: basics.hasClone, feed: feed)
+            // a Dev copy is above every beta of its version by precedence: whether it holds the newest one is asked of GitHub
+            var containment: BetaContainment?
+            if build.isDevelopment, let commit = build.commit, let beta = feed?.newestBeta {
+                containment = await UpdateChecker.betaContainment(tag: "v\(beta)", commit: commit, force: force)
+                guard channel == asked else { return }
+            }
+            channelState = ChannelLogic.beta(build: build, cloneBranch: basics.branch, isClone: basics.hasClone, feed: feed,
+                                             containment: containment)
             newestBeta = feed?.newestBeta.map { BuildInfo.label(forVersion: $0) }
             channelChangelog = nil
             betaNotes = notes
@@ -214,7 +221,9 @@ public final class UpdateState {
                 return (clone.facts(installed: build.commit), clone.changelog)
             }.value
             // the published beta's card sits under the clone's own unreleased one on This Copy
-            let notes = basics.hasClone ? await Self.betaNotes(from: await UpdateChecker.betaFeed(force: force), force: force) : nil
+            // only a clone on development can follow a beta, so only then is the beta's card read (This Copy stays local otherwise)
+            let notes = basics.hasClone && basics.branch == "development"
+                ? await Self.betaNotes(from: await UpdateChecker.betaFeed(force: force), force: force) : nil
             guard channel == asked else { return }
             cloneFacts = read.facts
             cloneDirty = read.facts?.isDirty

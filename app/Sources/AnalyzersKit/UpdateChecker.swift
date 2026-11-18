@@ -1,8 +1,9 @@
 import Foundation
 
 /// Version awareness: installed (Info.plist, injected from VERSION at build
-/// time) vs the latest GitHub release. Network use is one public GET to the
-/// releases API, cached for 6 hours — nothing about the machine is sent.
+/// time) vs the latest GitHub release. Network use is public, unauthenticated GETs to GitHub (the latest release; on
+/// Beta and This Copy also the releases list, that beta's changelog and, for a Dev copy, one compare of the beta's tag
+/// with the copy's commit), each cached for 6 hours — nothing about the machine is sent.
 public enum UpdateChecker {
 
     public static var installedVersion: String {
@@ -20,15 +21,16 @@ public enum UpdateChecker {
     }
 
     /// Latest release version ("2.9.0"), cached for 6 h unless forced.
-    /// A cached value OLDER than the installed build is nonsense (local
-    /// builds outrun the cache) — treated as stale and refetched.
+    /// A cached value OLDER than the release number this copy is built from is nonsense (the cache predates a release the
+    /// copy already carries) — treated as stale and refetched. A beta or Dev copy compares by that release number, not by
+    /// its own version, so being past the latest release never makes the cache stale.
     public static func latestVersion(force: Bool = false) async -> String? {
         let defaults = UserDefaults.standard
         let lastCheck = defaults.double(forKey: "updateCheckAt")
         if !force,
            Date().timeIntervalSince1970 - lastCheck < 6 * 3600,
            let cached = defaults.string(forKey: "updateLatest"),
-           !isNewer(BuildInfo.current.version, than: cached) {
+           !isNewer(BuildInfo.current.release, than: cached) {
             return cached
         }
         guard let url = URL(string: "https://api.github.com/repos/hrconsultnj/mac-analyzers/releases/latest"),
@@ -109,6 +111,27 @@ public enum UpdateChecker {
             defaults.set(encoded, forKey: "updateBetaFeed")
         }
         return feed
+    }
+
+    /// Whether `commit` (what a copy was built from) holds the beta published at `tag`: one public GET of GitHub's compare,
+    /// cached for 6 hours per pair unless forced. nil when it cannot be said: offline, rate limited, or a commit GitHub
+    /// does not know (local commits that were never pushed).
+    public static func betaContainment(tag: String, commit: String, force: Bool = false) async -> BetaContainment? {
+        let defaults = UserDefaults.standard
+        let key = "updateBetaContainment.\(tag).\(commit)"
+        if !force, let stored = defaults.string(forKey: key + ".at"), let at = Double(stored),
+           Date().timeIntervalSince1970 - at < 6 * 3600, let answer = defaults.string(forKey: key) {
+            return answer == "contains" ? .contains : .lacks
+        }
+        guard let url = URL(string: "https://api.github.com/repos/\(repository)/compare/\(tag)...\(commit)"),
+              let (data, response) = try? await URLSession.shared.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let status = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["status"] as? String
+        else { return nil }
+        let answer: BetaContainment = (status == "ahead" || status == "identical") ? .contains : .lacks
+        defaults.set(answer == .contains ? "contains" : "lacks", forKey: key)
+        defaults.set(String(Date().timeIntervalSince1970), forKey: key + ".at")
+        return answer
     }
 
     private struct CachedFeed: Codable { var at: Double; var feed: BetaFeed }
