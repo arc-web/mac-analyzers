@@ -17,8 +17,6 @@ The screen is a deep-link name such as `monitor`, `trends` or `recordings`
 title is optional. One screen per bullet: a change that touches two screens
 is two bullets. The release date is added when the release is cut.
 
-- Overview has a Scan Everything button. It previews every cleanup and writes every report, one after another, so each screen already has its results when you open it. Nothing is changed or removed: you still review and apply each cleanup yourself, within 15 minutes of its preview. Overview shows how many scans are done, and Cancel the Rest stops the ones that have not started. It will not start while your Mac is critically low on memory. <!-- wn: open=overview icon=sparkle.magnifyingglass title="Scan Everything" -->
-
 ## v2.73.0 — Stop what you own, a Mac Analyzers screen, and worktrees that are never removed
 <!-- wn: released=2026-11-18 -->
 
