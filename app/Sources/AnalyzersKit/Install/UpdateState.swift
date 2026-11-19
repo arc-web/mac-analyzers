@@ -44,10 +44,20 @@ public final class UpdateState {
     private var storedChannel = UpdateChannel.saved
     /// Where Beta or This Copy leaves this copy; nil on Releases, or before the first answer.
     public private(set) var channelState: ChannelState?
-    /// The newest commit on `development` ("a1b2c3d · the commit's first line"), when Beta has heard.
+    /// The newest thing Beta offers, by its short name ("2.72.1 Beta 2"), when Beta has heard; nil when no beta is out.
     public private(set) var newestBeta: String?
-    /// The changelog the channel's release notes come from: development's on Beta, the clone's on This Copy.
+    /// The clone's own changelog on This Copy (its uncommitted edits included): where "Not Released Yet" comes from.
     public private(set) var channelChangelog: String?
+    /// The newest published beta that is past the newest release, with the changelog as it stood at its tag: what the
+    /// What's New list shows as that beta's card on Beta and This Copy. nil when no beta is out, or it is offline.
+    public private(set) var betaNotes: BetaNotes?
+
+    public struct BetaNotes: Equatable, Sendable {
+        /// "2.72.1 Beta 2"
+        public let label: String
+        public let changelog: String
+        public init(label: String, changelog: String) { self.label = label; self.changelog = changelog }
+    }
     /// Whether this copy was built from a git clone, and the branch that clone is on: read with plain git,
     /// never fetched. A downloaded app has no clone and can only follow releases.
     public private(set) var hasClone = false
@@ -99,7 +109,10 @@ public final class UpdateState {
 
     /// The same for a development channel: the channel, what it answered, and the clone it read.
     @_spi(TestSupport) public func preset(channel: UpdateChannel, state: ChannelState, newest: String? = nil,
-                                          cloneBranch: String? = "development", facts: CloneFacts? = nil) {
+                                          cloneBranch: String? = "development", facts: CloneFacts? = nil,
+                                          cloneChangelog: String? = nil, betaNotes: BetaNotes? = nil) {
+        channelChangelog = cloneChangelog
+        self.betaNotes = betaNotes
         storedChannel = channel
         channelState = state
         newestBeta = newest
@@ -183,28 +196,50 @@ public final class UpdateState {
             cloneDirty = nil
         case .beta:
             let dirty = await Task.detached { provider()?.isDirty }.value
-            var compare: BetaCompare?
-            if basics.hasClone, basics.branch == "development", let commit = build.commit {
-                compare = await UpdateChecker.betaCompare(installedCommit: commit, force: force)
+            var feed: BetaFeed?
+            if basics.hasClone, basics.branch == "development" {
+                feed = await UpdateChecker.betaFeed(force: force)
             }
-            let notes = basics.hasClone ? await UpdateChecker.betaChangelog(force: force) : nil
+            let notes = basics.hasClone ? await Self.betaNotes(from: feed, force: force) : nil
             guard channel == asked else { return }
             cloneDirty = dirty
             cloneFacts = nil
-            channelState = ChannelLogic.beta(build: build, cloneBranch: basics.branch, isClone: basics.hasClone, compare: compare)
-            newestBeta = compare?.newest
-            channelChangelog = notes
+            // a Dev copy is above every beta of its version by precedence: whether it holds the newest one is asked of GitHub
+            var containment: BetaContainment?
+            if build.isDevelopment, let commit = build.commit, let beta = feed?.newestBeta {
+                containment = await UpdateChecker.betaContainment(tag: "v\(beta)", commit: commit, force: force)
+                guard channel == asked else { return }
+            }
+            channelState = ChannelLogic.beta(build: build, cloneBranch: basics.branch, isClone: basics.hasClone, feed: feed,
+                                             containment: containment)
+            newestBeta = feed?.newestBeta.map { BuildInfo.label(forVersion: $0) }
+            channelChangelog = nil
+            betaNotes = notes
         case .thisCopy:
             let read: (facts: CloneFacts?, changelog: String?) = await Task.detached {
                 guard let clone = provider() else { return (nil, nil) }
                 return (clone.facts(installed: build.commit), clone.changelog)
             }.value
+            // the published beta's card sits under the clone's own unreleased one on This Copy
+            // only a clone on development can follow a beta, so only then is the beta's card read (This Copy stays local otherwise)
+            let notes = basics.hasClone && basics.branch == "development"
+                ? await Self.betaNotes(from: await UpdateChecker.betaFeed(force: force), force: force) : nil
             guard channel == asked else { return }
             cloneFacts = read.facts
             cloneDirty = read.facts?.isDirty
             channelState = ChannelLogic.thisCopy(build: build, isClone: basics.hasClone, clone: read.facts)
             channelChangelog = read.changelog
+            betaNotes = notes
         }
+    }
+
+    /// The newest beta, when it is past the newest release, with its changelog at its tag.
+    private static func betaNotes(from feed: BetaFeed?, force: Bool) async -> BetaNotes? {
+        guard let beta = feed?.newestBeta,
+              feed?.newestRelease.map({ UpdateChecker.isNewer(beta, than: $0) }) ?? true,
+              let text = await UpdateChecker.betaChangelog(ref: "v\(beta)", force: force)
+        else { return nil }
+        return BetaNotes(label: BuildInfo.label(forVersion: beta), changelog: text)
     }
 
     /// Checks at launch and every six hours for as long as the app runs.
@@ -274,7 +309,8 @@ public final class UpdateState {
     private func startInstall() {
         guard phase != .installing else { return }
         phase = .installing
-        // This Copy rebuilds the clone as it is (nothing is pulled); Releases and Beta pull, then rebuild
-        GuardControl.runUpgrade(rebuildOnly: channel == .thisCopy)
+        // This Copy rebuilds the clone as it is (nothing is pulled); Beta moves the clone to the newest beta's tag;
+        // Releases pulls; each then rebuilds
+        GuardControl.runUpgrade(rebuildOnly: channel == .thisCopy, beta: channel == .beta)
     }
 }

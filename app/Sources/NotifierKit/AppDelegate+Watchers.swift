@@ -48,7 +48,7 @@ extension AppDelegate {
                     NotificationPoster.shared.post(
                         title: "\(Names.app) \(Names.State.updateAvailable)",
                         subtitle: "v\(latest)",
-                        message: "You're on v\(BuildInfo.current.shortVersion). Click to open \(Names.Screen.updates) and install with one click.",
+                        message: "You're on \(BuildInfo.current.versionText). Click to open \(Names.Screen.updates) and install with one click.",
                         sound: nil, logPath: nil, paneTarget: "update")
                     UserDefaults.standard.set(latest, forKey: "updateNotifiedFor")
                 }

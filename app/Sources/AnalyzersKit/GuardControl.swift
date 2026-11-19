@@ -255,8 +255,11 @@ public enum GuardControl {
     ///
     /// `rebuildOnly` (the This Copy channel) runs `rebuild.command`: the same steps without the pull,
     /// so a clone with uncommitted work is built as it is.
-    public static func runUpgrade(rebuildOnly: Bool = false) {
-        NSWorkspace.shared.open(AnalyzersPaths.suiteRoot.appending(path: rebuildOnly ? "rebuild.command" : "upgrade.command"))
+    ///
+    /// `beta` (the Beta channel) runs `beta.command`: it moves the clone to the newest beta's tag, then the same steps.
+    public static func runUpgrade(rebuildOnly: Bool = false, beta: Bool = false) {
+        let name = rebuildOnly ? "rebuild.command" : (beta ? "beta.command" : "upgrade.command")
+        NSWorkspace.shared.open(AnalyzersPaths.suiteRoot.appending(path: name))
     }
 
     /// Deep-link to this app's pane in System Settings → Notifications.
